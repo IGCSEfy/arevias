@@ -14,4 +14,3 @@ node_modules/
 .next/
 .DS_Store
 .playwright-mcp/
-*.png
