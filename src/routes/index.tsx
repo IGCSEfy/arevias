@@ -9,12 +9,20 @@ import { MessageBlock } from "@/components/arevias/Message";
 import type { Message } from "@/components/arevias/Message";
 import { ThinkingDots } from "@/components/arevias/Thinking";
 import { ai } from "@/lib/ai";
+import type { AiHistoryMessage } from "@/lib/ai";
 
 export const Route = createFileRoute("/")({
   component: IndexComponent,
 });
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+const toAiHistory = (message: Message): AiHistoryMessage => ({
+  id: message.id,
+  role: message.role,
+  text: message.text,
+  replyTo: message.replyTo,
+});
 
 function IndexComponent() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -166,7 +174,11 @@ function IndexComponent() {
     setReplyTo(null);
     scheduleScroll(true);
 
-    const parts = await ai.generateReplyParts(text);
+    const parts = await ai.generateReplyParts({
+      message: text,
+      history: messages.slice(-8).map(toAiHistory),
+      replyTo: currentReply,
+    });
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];

@@ -1,4 +1,5 @@
 import type { AiAdapter } from "./types";
+import type { AiReplyRequest } from "./types";
 
 const aiFragments = [
   ["mm", "yeah", "okay", "right", "hm", "got it", "i hear you"],
@@ -27,8 +28,9 @@ const aiFragments = [
 const pick = <T,>(arr: T[], seed: number) => arr[Math.abs(seed) % arr.length];
 
 export class MockAdapter implements AiAdapter {
-  generateReplyParts(input: string): string[] {
-    const hash = input.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  generateReplyParts(input: AiReplyRequest): string[] {
+    const message = input.message;
+    const hash = message.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
     const mode = hash % 5;
     const parts: string[] = [];
 

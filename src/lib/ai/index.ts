@@ -1,5 +1,10 @@
-import { MockAdapter } from "./mock";
+import { HttpAiAdapter } from "./http";
 import type { AiAdapter } from "./types";
 
-export const ai: AiAdapter = new MockAdapter();
-export type { AiAdapter };
+export const ai: AiAdapter = new HttpAiAdapter();
+export type {
+  AiAdapter,
+  AiHistoryMessage,
+  AiReplyContext,
+  AiReplyRequest,
+} from "./types";
