@@ -38,11 +38,11 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ background: "#000" }}>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body style={{ background: "#000", color: "#fff" }}>
         {children}
         <Scripts />
       </body>

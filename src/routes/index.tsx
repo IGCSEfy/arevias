@@ -28,6 +28,7 @@ function IndexComponent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [thinking, setThinking] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -40,6 +41,14 @@ function IndexComponent() {
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoaded(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const cancelPendingScroll = () => {
@@ -209,10 +218,10 @@ function IndexComponent() {
   };
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-background text-foreground">
+    <div className="arevias-app-shell fixed inset-0 overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 radial-glow" />
       <CursorGlow />
-      <main className="relative z-10 flex h-[100dvh] overflow-hidden flex-col">
+      <main className="arevias-main relative z-10 flex h-[100dvh] overflow-hidden flex-col">
         <AnimatePresence mode="wait">
           {empty ? (
             <motion.section
@@ -221,16 +230,23 @@ function IndexComponent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, y: -20, filter: "blur(8px)" }}
               transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-              className="arevias-hero-section relative flex flex-1 items-center justify-center px-6"
+              className={`arevias-hero-section relative flex flex-1 items-center justify-center px-6 ${
+                loaded ? "is-loaded" : ""
+              }`}
             >
+              <div aria-hidden className="arevias-intro-blob-field">
+                <div className="arevias-intro-blob arevias-intro-blob-1" />
+                <div className="arevias-intro-blob arevias-intro-blob-2" />
+                <div className="arevias-intro-blob arevias-intro-blob-3" />
+              </div>
               <div aria-hidden className="arevias-hero-depth" />
               <div aria-hidden className="arevias-hero-vignette" />
               <div className="arevias-hero-composition relative z-10 w-full mx-auto">
-                <div className="arevias-hero-logo-frame pointer-events-none">
+                <div className="arevias-intro-headline arevias-hero-logo-frame pointer-events-none">
                   <AmbientLogo width={540} opacity={0.2} />
                 </div>
-                <div className="arevias-hero-input-frame relative">
-                  <ChatInput onSend={handleSend} />
+                <div className="arevias-intro-cta arevias-hero-input-frame relative">
+                  <ChatInput onSend={handleSend} disableEntranceMotion />
                 </div>
               </div>
             </motion.section>
@@ -240,13 +256,13 @@ function IndexComponent() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8 }}
-              className="relative flex h-full min-h-0 flex-col overflow-hidden"
+              className="arevias-conversation relative flex h-full min-h-0 flex-col overflow-hidden"
             >
               <div
                 ref={scrollRef}
-                className="overscroll-contain flex-1 min-h-0 overflow-y-auto px-6 md:px-14 pt-16"
+                className="arevias-conversation-scroll overscroll-contain flex-1 min-h-0 overflow-y-auto px-6 md:px-14 pt-16"
               >
-                <div className="max-w-3xl mx-auto py-10 space-y-6 pb-[220px]">
+                <div className="arevias-conversation-inner max-w-3xl mx-auto py-10 space-y-6 pb-[220px]">
                   {messages.map((m, i) => {
                     const prev = messages[i - 1];
                     const tightToPrev = prev && prev.role === m.role && !m.replyTo;
@@ -289,8 +305,8 @@ function IndexComponent() {
                 }}
               />
 
-              <div className="absolute inset-x-0 bottom-0 z-10 px-6 md:px-14 pb-8 pt-4">
-                <div className="relative w-full max-w-2xl mx-auto">
+              <div className="arevias-input-dock absolute inset-x-0 bottom-0 z-10 px-6 md:px-14 pb-8 pt-4">
+                <div className="arevias-input-shell relative w-full max-w-2xl mx-auto">
                   <div className="relative">
                     <ChatInput
                       onSend={handleSend}

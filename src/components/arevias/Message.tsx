@@ -25,10 +25,12 @@ export function MessageBlock({
       initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
       animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
-      className={`group w-full flex ${isUser ? "justify-end" : "justify-start"}`}
+      className={`arevias-message-row group w-full flex ${
+        isUser ? "justify-end" : "justify-start"
+      }`}
     >
       <div
-        className={`max-w-[78%] ${
+        className={`arevias-message-bubble max-w-[78%] ${
           isUser ? "text-right" : "text-left"
         } relative`}
       >
@@ -79,7 +81,7 @@ export function MessageBlock({
               type="button"
               onClick={() => onReply(msg)}
               aria-label="Reply"
-              className={`absolute top-1/2 -translate-y-1/2 ${
+              className={`arevias-reply-button absolute top-1/2 -translate-y-1/2 ${
                 isUser ? "-left-9" : "-right-9"
               } opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity duration-300 h-7 w-7 rounded-full flex items-center justify-center text-foreground/70`}
             >

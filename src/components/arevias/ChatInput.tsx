@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { JSX, KeyboardEvent } from "react";
+import type { ElementType, JSX, KeyboardEvent } from "react";
 
 export type ReplyTarget = { id: string; role: "user" | "ai"; text: string };
 
@@ -17,11 +17,13 @@ export function ChatInput({
   disabled,
   replyTo,
   onCancelReply,
+  disableEntranceMotion,
 }: {
   onSend: (text: string) => void;
   disabled?: boolean;
   replyTo?: ReplyTarget | null;
   onCancelReply?: () => void;
+  disableEntranceMotion?: boolean;
 }): JSX.Element {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -58,13 +60,20 @@ export function ChatInput({
     }
   };
 
+  const Root = (disableEntranceMotion ? "div" : motion.div) as ElementType;
+  const rootMotionProps = disableEntranceMotion
+    ? {}
+    : {
+        layout: true,
+        initial: { opacity: 0, y: 24 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] },
+      };
+
   return (
-    <motion.div
+    <Root
+      {...rootMotionProps}
       data-arevias-chat-input
-      layout
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
       className="w-full max-w-2xl mx-auto"
       style={{ maxWidth: "var(--arevias-input-max-w, 42rem)" }}
     >
@@ -73,6 +82,7 @@ export function ChatInput({
           {replyTo && (
             <motion.div
               key="reply-preview"
+              data-arevias-reply-preview
               initial={{ opacity: 0, y: 12, filter: "blur(6px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               exit={{ opacity: 0, y: 8, filter: "blur(4px)" }}
@@ -238,6 +248,6 @@ export function ChatInput({
           </div>
         </motion.div>
       </div>
-    </motion.div>
+    </Root>
   );
 }
