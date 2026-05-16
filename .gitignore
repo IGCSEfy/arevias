@@ -1,0 +1,17 @@
+node_modules
+dist
+.output
+.nitro
+.vinxi
+.tanstack
+.npm-cache
+.DS_Store
+.playwright-mcp
+/arevias-*.png
+.env.local
+.env
+node_modules/
+.next/
+.DS_Store
+.playwright-mcp/
+*.png

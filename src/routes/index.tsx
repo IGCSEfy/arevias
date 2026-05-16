@@ -1,0 +1,298 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { AmbientLogo } from "@/components/arevias/AmbientLogo";
+import { ChatInput } from "@/components/arevias/ChatInput";
+import type { ReplyTarget } from "@/components/arevias/ChatInput";
+import { CursorGlow } from "@/components/arevias/CursorGlow";
+import { MessageBlock } from "@/components/arevias/Message";
+import type { Message } from "@/components/arevias/Message";
+import { ThinkingDots } from "@/components/arevias/Thinking";
+import { ai } from "@/lib/ai";
+
+export const Route = createFileRoute("/")({
+  component: IndexComponent,
+});
+
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+function IndexComponent() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [thinking, setThinking] = useState(false);
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
+  const pendingScrollRaf = useRef<number | null>(null);
+  const pendingScrollTimer = useRef<number | null>(null);
+  const activeScrollRaf = useRef<number | null>(null);
+  const autoScrolling = useRef(false);
+  const previousRender = useRef({ messageCount: 0, thinking: false });
+  const empty = messages.length === 0;
+
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+  }, []);
+
+  const cancelPendingScroll = () => {
+    if (pendingScrollTimer.current != null) {
+      clearTimeout(pendingScrollTimer.current);
+    }
+    if (pendingScrollRaf.current != null) {
+      cancelAnimationFrame(pendingScrollRaf.current);
+    }
+    pendingScrollTimer.current = null;
+    pendingScrollRaf.current = null;
+  };
+
+  const cancelActiveScroll = () => {
+    if (activeScrollRaf.current != null) {
+      cancelAnimationFrame(activeScrollRaf.current);
+    }
+    activeScrollRaf.current = null;
+    autoScrolling.current = false;
+  };
+
+  const scrollToBottom = (el: HTMLDivElement) => {
+    const target = Math.max(0, el.scrollHeight - el.clientHeight);
+    const start = el.scrollTop;
+    const distance = target - start;
+
+    if (Math.abs(distance) < 2) {
+      el.scrollTo({ top: target, behavior: "auto" });
+      stickToBottom.current = true;
+      return;
+    }
+
+    const duration = Math.min(620, Math.max(300, Math.abs(distance) * 0.45));
+    const startedAt = performance.now();
+    autoScrolling.current = true;
+
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.scrollTo({ top: start + distance * eased, behavior: "auto" });
+
+      if (p < 1) {
+        activeScrollRaf.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      activeScrollRaf.current = null;
+      el.scrollTo({ top: target, behavior: "auto" });
+      autoScrolling.current = false;
+      stickToBottom.current = true;
+    };
+
+    activeScrollRaf.current = requestAnimationFrame(tick);
+  };
+
+  const scheduleScroll = (force = false) => {
+    if (!force && !stickToBottom.current) return;
+    cancelPendingScroll();
+    cancelActiveScroll();
+    pendingScrollTimer.current = window.setTimeout(() => {
+      pendingScrollTimer.current = null;
+      pendingScrollRaf.current = requestAnimationFrame(() => {
+        pendingScrollRaf.current = requestAnimationFrame(() => {
+          pendingScrollRaf.current = null;
+          const el = scrollRef.current;
+          if (!el || (!force && !stickToBottom.current)) return;
+          scrollToBottom(el);
+        });
+      });
+    }, 80);
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const updateStickiness = () => {
+      if (autoScrolling.current) return;
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      stickToBottom.current = distance < 200;
+    };
+
+    const handleUserScrollIntent = () => {
+      cancelPendingScroll();
+      cancelActiveScroll();
+      el.scrollTo({ top: el.scrollTop, behavior: "auto" });
+      updateStickiness();
+    };
+
+    el.addEventListener("scroll", updateStickiness, { passive: true });
+    el.addEventListener("wheel", handleUserScrollIntent, { passive: true });
+    el.addEventListener("touchstart", handleUserScrollIntent, { passive: true });
+    el.addEventListener("pointerdown", handleUserScrollIntent, { passive: true });
+
+    return () => {
+      el.removeEventListener("scroll", updateStickiness);
+      el.removeEventListener("wheel", handleUserScrollIntent);
+      el.removeEventListener("touchstart", handleUserScrollIntent);
+      el.removeEventListener("pointerdown", handleUserScrollIntent);
+    };
+  }, [messages.length > 0]);
+
+  useEffect(() => {
+    const messageAdded = messages.length > previousRender.current.messageCount;
+    const thinkingStarted = thinking && !previousRender.current.thinking;
+
+    previousRender.current = { messageCount: messages.length, thinking };
+
+    if (messageAdded || thinkingStarted) {
+      scheduleScroll();
+    }
+  }, [messages.length, thinking]);
+
+  useEffect(() => {
+    return () => {
+      cancelPendingScroll();
+      cancelActiveScroll();
+    };
+  }, []);
+
+  const handleSend = async (text: string) => {
+    const currentReply = replyTo;
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      text,
+      replyTo: currentReply ?? undefined,
+    };
+
+    stickToBottom.current = true;
+    setMessages((m) => [...m, userMsg]);
+    setReplyTo(null);
+    scheduleScroll(true);
+
+    const parts = await ai.generateReplyParts(text);
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (!part) continue;
+
+      setThinking(true);
+      scheduleScroll();
+      const thinkMs =
+        (i === 0 ? 1300 : 700) + part.length * 14 + Math.random() * 500;
+      await wait(thinkMs);
+
+      setThinking(false);
+      await wait(220);
+
+      setMessages((m) => [
+        ...m,
+        {
+          id: crypto.randomUUID(),
+          role: "ai",
+          text: part,
+          continuation: i > 0,
+        },
+      ]);
+      scheduleScroll();
+
+      await wait(900 + Math.random() * 400);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 overflow-hidden bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-0 radial-glow" />
+      <CursorGlow />
+      <main className="relative z-10 flex h-[100dvh] overflow-hidden flex-col">
+        <AnimatePresence mode="wait">
+          {empty ? (
+            <motion.section
+              key="hero"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, y: -20, filter: "blur(8px)" }}
+              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+              className="arevias-hero-section relative flex flex-1 items-center justify-center px-6"
+            >
+              <div aria-hidden className="arevias-hero-depth" />
+              <div aria-hidden className="arevias-hero-vignette" />
+              <div className="arevias-hero-composition relative z-10 w-full mx-auto">
+                <div className="arevias-hero-logo-frame pointer-events-none">
+                  <AmbientLogo width={540} opacity={0.2} />
+                </div>
+                <div className="arevias-hero-input-frame relative">
+                  <ChatInput onSend={handleSend} />
+                </div>
+              </div>
+            </motion.section>
+          ) : (
+            <motion.section
+              key="conversation"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8 }}
+              className="relative flex h-full min-h-0 flex-col overflow-hidden"
+            >
+              <div
+                ref={scrollRef}
+                className="overscroll-contain flex-1 min-h-0 overflow-y-auto px-6 md:px-14 pt-16"
+              >
+                <div className="max-w-3xl mx-auto py-10 space-y-6 pb-[220px]">
+                  {messages.map((m, i) => {
+                    const prev = messages[i - 1];
+                    const tightToPrev = prev && prev.role === m.role && !m.replyTo;
+
+                    return (
+                      <div key={m.id} className={tightToPrev ? "-mt-2" : ""}>
+                        <MessageBlock
+                          msg={m}
+                          onReply={(t) =>
+                            setReplyTo({ id: t.id, role: t.role, text: t.text })
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                  <AnimatePresence initial={false}>
+                    {thinking && (
+                      <motion.div
+                        key="thinking"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.25, ease: "linear" }}
+                        style={{ willChange: "opacity" }}
+                      >
+                        <ThinkingDots />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <div ref={bottomRef} aria-hidden className="h-px w-full" />
+                </div>
+              </div>
+
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-64"
+                style={{
+                  background:
+                    "linear-gradient(to top, var(--color-background) 38%, color-mix(in oklab, var(--color-background) 70%, transparent) 72%, transparent)",
+                }}
+              />
+
+              <div className="absolute inset-x-0 bottom-0 z-10 px-6 md:px-14 pb-8 pt-4">
+                <div className="relative w-full max-w-2xl mx-auto">
+                  <div className="relative">
+                    <ChatInput
+                      onSend={handleSend}
+                      disabled={thinking}
+                      replyTo={replyTo}
+                      onCancelReply={() => setReplyTo(null)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}
