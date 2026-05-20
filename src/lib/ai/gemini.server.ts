@@ -5,9 +5,17 @@ import type {
   AiReplyRequest,
 } from "./types";
 
-const GEMINI_MODEL = "gemini-2.5-flash-lite";
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const PRIMARY_GEMINI_MODEL = "gemini-2.5-flash-lite";
+const FALLBACK_GEMINI_MODELS = [
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash",
+];
+const GEMINI_MODELS = [PRIMARY_GEMINI_MODEL, ...FALLBACK_GEMINI_MODELS];
 const REQUEST_TIMEOUT_MS = 10_000;
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 250;
+const MODEL_RATE_LIMIT_COOLDOWN_MS = 60_000;
+const MODEL_RATE_LIMIT_MAX_COOLDOWN_MS = 10 * 60_000;
 
 const SYSTEM_INSTRUCTION = [
   "You are Arevias.",
@@ -40,8 +48,22 @@ type GeminiResponse = {
   }>;
 };
 
+const modelRateLimitCooldowns = new Map<string, number>();
+
 export class GeminiRateLimitError extends Error {
   name = "GeminiRateLimitError";
+
+  constructor(readonly retryAfterMs?: number) {
+    super("Gemini rate limit");
+  }
+}
+
+class GeminiTransientError extends Error {
+  name = "GeminiTransientError";
+}
+
+class GeminiModelUnavailableError extends Error {
+  name = "GeminiModelUnavailableError";
 }
 
 export async function generateAreviasReply(
@@ -57,11 +79,96 @@ export async function generateAreviasReply(
     throw new Error("Gemini unavailable");
   }
 
+  let rateLimitError: GeminiRateLimitError | null = null;
+  let modelUnavailableError: GeminiModelUnavailableError | null = null;
+
+  for (const model of GEMINI_MODELS) {
+    const cooldownMs = getModelRateLimitCooldown(model);
+    if (cooldownMs > 0) {
+      rateLimitError ??= new GeminiRateLimitError(cooldownMs);
+      continue;
+    }
+
+    try {
+      return await requestGeminiWithRetry(input, message, apiKey, model);
+    } catch (error) {
+      if (error instanceof GeminiRateLimitError) {
+        rateLimitError = error;
+        setModelRateLimitCooldown(model, error.retryAfterMs);
+        continue;
+      }
+
+      if (error instanceof GeminiModelUnavailableError) {
+        modelUnavailableError = error;
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw (
+    rateLimitError ?? modelUnavailableError ?? new Error("Gemini request failed")
+  );
+}
+
+function getModelRateLimitCooldown(model: string) {
+  const retryAt = modelRateLimitCooldowns.get(model);
+  if (!retryAt) return 0;
+
+  const remainingMs = retryAt - Date.now();
+  if (remainingMs <= 0) {
+    modelRateLimitCooldowns.delete(model);
+    return 0;
+  }
+
+  return remainingMs;
+}
+
+function setModelRateLimitCooldown(model: string, retryAfterMs?: number) {
+  const cooldownMs = clampRetryDelay(
+    retryAfterMs ?? MODEL_RATE_LIMIT_COOLDOWN_MS,
+  );
+  modelRateLimitCooldowns.set(model, Date.now() + cooldownMs);
+}
+
+async function requestGeminiWithRetry(
+  input: AiReplyRequest,
+  message: string,
+  apiKey: string,
+  model: string,
+) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      return await requestGemini(input, message, apiKey, model);
+    } catch (error) {
+      if (error instanceof GeminiRateLimitError) {
+        throw error;
+      }
+
+      if (attempt < MAX_ATTEMPTS - 1 && isRetriableGeminiError(error)) {
+        await wait(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error("Gemini request failed");
+}
+
+async function requestGemini(
+  input: AiReplyRequest,
+  message: string,
+  apiKey: string,
+  model: string,
+) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(GEMINI_ENDPOINT, {
+    const response = await fetch(getGeminiEndpoint(model), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -73,7 +180,15 @@ export async function generateAreviasReply(
 
     if (!response.ok) {
       if (response.status === 429) {
-        throw new GeminiRateLimitError();
+        throw new GeminiRateLimitError(await parseRetryDelay(response));
+      }
+
+      if (isModelUnavailableStatus(response.status)) {
+        throw new GeminiModelUnavailableError();
+      }
+
+      if (isTransientStatus(response.status)) {
+        throw new GeminiTransientError();
       }
 
       throw new Error("Gemini request failed");
@@ -83,7 +198,7 @@ export async function generateAreviasReply(
     const text = extractText(data);
 
     if (!text) {
-      throw new Error("Empty Gemini response");
+      throw new GeminiTransientError();
     }
 
     return normalizeReply(text);
@@ -91,6 +206,84 @@ export async function generateAreviasReply(
     clearTimeout(timeoutId);
   }
 }
+
+function isRetriableGeminiError(error: unknown) {
+  return (
+    error instanceof GeminiTransientError ||
+    (typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      error.name === "AbortError")
+  );
+}
+
+async function parseRetryDelay(response: Response) {
+  return parseRetryAfterHeader(response) ?? (await parseRetryAfterBody(response));
+}
+
+function getGeminiEndpoint(model: string) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
+
+function parseRetryAfterHeader(response: Response) {
+  const value = response.headers.get("retry-after");
+  if (!value) return undefined;
+
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) {
+    return clampRetryDelay(seconds * 1_000);
+  }
+
+  const retryAt = Date.parse(value);
+  if (!Number.isFinite(retryAt)) return undefined;
+
+  return clampRetryDelay(retryAt - Date.now());
+}
+
+async function parseRetryAfterBody(response: Response) {
+  try {
+    const data = (await response.clone().json()) as {
+      error?: {
+        details?: Array<{ retryDelay?: unknown }>;
+      };
+    };
+    const retryDelay = data.error?.details?.find(
+      (detail) => typeof detail.retryDelay === "string",
+    )?.retryDelay;
+
+    if (typeof retryDelay !== "string") return undefined;
+
+    const ms = parseGoogleDuration(retryDelay);
+    return ms == null ? undefined : clampRetryDelay(ms);
+  } catch {
+    return undefined;
+  }
+}
+
+function clampRetryDelay(ms: number) {
+  return Math.min(
+    Math.max(ms, 1_000),
+    MODEL_RATE_LIMIT_MAX_COOLDOWN_MS,
+  );
+}
+
+function parseGoogleDuration(duration: string) {
+  const match = duration.match(/^(\d+(?:\.\d+)?)s$/);
+  if (!match) return undefined;
+
+  return Number(match[1]) * 1_000;
+}
+
+function isTransientStatus(status: number) {
+  return [408, 409, 425, 500, 502, 503, 504].includes(status);
+}
+
+function isModelUnavailableStatus(status: number) {
+  return [400, 403, 404].includes(status);
+}
+
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function buildGeminiRequest(input: AiReplyRequest, message: string) {
   return {

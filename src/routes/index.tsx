@@ -37,6 +37,7 @@ function IndexComponent() {
   const activeScrollRaf = useRef<number | null>(null);
   const autoScrolling = useRef(false);
   const previousRender = useRef({ messageCount: 0, thinking: false });
+  const messageCountRef = useRef(0);
   const empty = messages.length === 0;
 
   useEffect(() => {
@@ -122,6 +123,85 @@ function IndexComponent() {
   };
 
   useEffect(() => {
+    messageCountRef.current = messages.length;
+  }, [messages.length]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const viewport = window.visualViewport;
+    let raf: number | null = null;
+    let scrollTimer: number | null = null;
+
+    const syncViewport = () => {
+      if (raf != null) {
+        cancelAnimationFrame(raf);
+      }
+
+      raf = requestAnimationFrame(() => {
+        raf = null;
+
+        const visualHeight = viewport?.height ?? window.innerHeight;
+        const visualOffsetTop = viewport?.offsetTop ?? 0;
+        const layoutHeight = Math.max(
+          window.innerHeight,
+          document.documentElement.clientHeight,
+        );
+        const keyboardInset = Math.max(
+          0,
+          layoutHeight - visualHeight - visualOffsetTop,
+        );
+        const keyboardOpen = keyboardInset > 80;
+
+        root.style.setProperty(
+          "--arevias-visual-viewport-height",
+          `${visualHeight}px`,
+        );
+        root.style.setProperty(
+          "--arevias-visual-viewport-offset-top",
+          `${visualOffsetTop}px`,
+        );
+        root.dataset.areviasKeyboard = keyboardOpen ? "open" : "closed";
+
+        if (
+          keyboardOpen &&
+          messageCountRef.current > 0 &&
+          document.activeElement instanceof HTMLTextAreaElement
+        ) {
+          if (scrollTimer != null) {
+            clearTimeout(scrollTimer);
+          }
+          scrollTimer = window.setTimeout(() => {
+            scrollTimer = null;
+            scheduleScroll(true);
+          }, 120);
+        }
+      });
+    };
+
+    syncViewport();
+    viewport?.addEventListener("resize", syncViewport);
+    viewport?.addEventListener("scroll", syncViewport);
+    window.addEventListener("resize", syncViewport);
+    window.addEventListener("orientationchange", syncViewport);
+
+    return () => {
+      if (raf != null) {
+        cancelAnimationFrame(raf);
+      }
+      if (scrollTimer != null) {
+        clearTimeout(scrollTimer);
+      }
+      viewport?.removeEventListener("resize", syncViewport);
+      viewport?.removeEventListener("scroll", syncViewport);
+      window.removeEventListener("resize", syncViewport);
+      window.removeEventListener("orientationchange", syncViewport);
+      root.style.removeProperty("--arevias-visual-viewport-height");
+      root.style.removeProperty("--arevias-visual-viewport-offset-top");
+      delete root.dataset.areviasKeyboard;
+    };
+  }, []);
+
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
 
@@ -171,6 +251,7 @@ function IndexComponent() {
 
   const handleSend = async (text: string) => {
     const currentReply = replyTo;
+    const wasEmpty = messages.length === 0;
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -181,22 +262,42 @@ function IndexComponent() {
     stickToBottom.current = true;
     setMessages((m) => [...m, userMsg]);
     setReplyTo(null);
+    setThinking(true);
     scheduleScroll(true);
 
+    const responseStartedAt = performance.now();
     const parts = await ai.generateReplyParts({
       message: text,
       history: messages.slice(-8).map(toAiHistory),
       replyTo: currentReply,
     });
+    const responseWaitMs = performance.now() - responseStartedAt;
+    const replyParts = parts.filter(Boolean);
 
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      if (!part) continue;
+    if (replyParts.length === 0) {
+      setThinking(false);
+      return;
+    }
 
-      setThinking(true);
+    for (let i = 0; i < replyParts.length; i++) {
+      const part = replyParts[i];
+
+      if (i > 0) {
+        setThinking(true);
+      }
       scheduleScroll();
-      const thinkMs =
+      const baseThinkMs =
         (i === 0 ? 1300 : 700) + part.length * 14 + Math.random() * 500;
+      const minimumFirstThinkMs = wasEmpty ? 1500 : 900;
+      const minimumAfterResponseMs = wasEmpty ? 450 : 350;
+      const thinkMs =
+        i === 0
+          ? Math.max(
+              minimumAfterResponseMs,
+              minimumFirstThinkMs - responseWaitMs,
+              baseThinkMs - responseWaitMs,
+            )
+          : baseThinkMs;
       await wait(thinkMs);
 
       setThinking(false);
@@ -221,7 +322,7 @@ function IndexComponent() {
     <div className="arevias-app-shell fixed inset-0 overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 radial-glow" />
       <CursorGlow />
-      <main className="arevias-main relative z-10 flex h-[100dvh] overflow-hidden flex-col">
+      <main className="arevias-main relative z-10 flex overflow-hidden flex-col">
         <AnimatePresence mode="wait">
           {empty ? (
             <motion.section
@@ -298,7 +399,7 @@ function IndexComponent() {
 
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-64"
+                className="arevias-bottom-veil pointer-events-none absolute inset-x-0 bottom-0"
                 style={{
                   background:
                     "linear-gradient(to top, var(--color-background) 38%, color-mix(in oklab, var(--color-background) 70%, transparent) 72%, transparent)",

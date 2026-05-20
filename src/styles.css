@@ -55,6 +55,8 @@
   --font-display: "Archivo Black", "Inter", sans-serif;
   --font-sans: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+  --arevias-visual-viewport-height: 100dvh;
+  --arevias-visual-viewport-offset-top: 0px;
 }
 
 @layer base {
@@ -110,6 +112,28 @@
       color-mix(in oklab, var(--color-foreground) 1.7%, transparent),
       transparent 66%
     );
+  }
+
+  .arevias-app-shell {
+    top: var(--arevias-visual-viewport-offset-top);
+    bottom: auto;
+    height: var(--arevias-visual-viewport-height);
+    min-height: var(--arevias-visual-viewport-height);
+  }
+
+  .arevias-main {
+    height: var(--arevias-visual-viewport-height);
+    min-height: 0;
+  }
+
+  .arevias-bottom-veil {
+    height: 16rem;
+  }
+
+  .arevias-thinking-dot {
+    opacity: 0.15;
+    animation: arevias-thinking-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1)
+      infinite;
   }
 
   .arevias-hero-section {
@@ -258,6 +282,7 @@
   .arevias-hero-composition {
     --arevias-input-max-w: min(calc(100vw - 48px), 44rem);
     --arevias-composition-overlap: 1.5rem;
+    --arevias-composition-y: -3.75rem;
     --arevias-input-border-width: 1px;
     --arevias-input-border: color-mix(
       in oklab,
@@ -330,15 +355,20 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    max-width: var(--arevias-input-max-w);
-    transform: translateY(clamp(1.25rem, 3.8vh, 2.8rem));
+    max-width: none;
+    transform: translateY(var(--arevias-composition-y));
   }
 
   .arevias-hero-composition::before {
     content: "";
     position: absolute;
     z-index: -1;
-    inset: -20% -22% -34%;
+    top: -20%;
+    bottom: -34%;
+    left: 50%;
+    width: calc(var(--arevias-input-max-w) + 18rem);
+    max-width: calc(100vw - 1rem);
+    transform: translateX(-50%);
     pointer-events: none;
     background: radial-gradient(
       ellipse 58% 62% at 50% 52%,
@@ -359,8 +389,11 @@
   .arevias-hero-input-frame {
     position: relative;
     z-index: 1;
-    width: 100%;
+    width: var(--arevias-input-max-w);
+    max-width: 100%;
     margin-top: calc(var(--arevias-composition-overlap) * -1);
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .arevias-hero-composition [data-arevias-input-pill] {
@@ -372,8 +405,8 @@
     .arevias-main {
       width: 100vw;
       max-width: 100vw;
-      height: 100dvh;
-      min-height: 100dvh;
+      height: var(--arevias-visual-viewport-height);
+      min-height: var(--arevias-visual-viewport-height);
       overflow: hidden;
     }
 
@@ -384,7 +417,7 @@
 
     .arevias-hero-composition {
       --arevias-input-max-w: min(calc(100vw - 3rem), 42rem);
-      transform: translateY(clamp(0.75rem, 2.8svh, 2rem));
+      --arevias-composition-y: -3.75rem;
     }
 
     .arevias-hero-logo-frame > div {
@@ -398,7 +431,7 @@
     .arevias-conversation {
       width: 100vw;
       max-width: 100vw;
-      height: 100dvh;
+      height: var(--arevias-visual-viewport-height);
       min-height: 0;
       overflow: hidden;
     }
@@ -418,11 +451,32 @@
     }
 
     .arevias-input-dock {
-      position: fixed;
+      position: absolute;
       padding-top: 1rem;
       padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
       padding-left: max(1.5rem, env(safe-area-inset-left));
       padding-right: max(1.5rem, env(safe-area-inset-right));
+    }
+
+    :root[data-arevias-keyboard="open"] .arevias-conversation-scroll {
+      display: flex;
+      flex-direction: column;
+      padding-top: max(1.25rem, calc(env(safe-area-inset-top) + 0.75rem));
+    }
+
+    :root[data-arevias-keyboard="open"] .arevias-conversation-inner {
+      margin-top: auto;
+      padding-top: 1rem;
+      padding-bottom: calc(6.75rem + env(safe-area-inset-bottom));
+    }
+
+    :root[data-arevias-keyboard="open"] .arevias-input-dock {
+      padding-top: 0.75rem;
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+
+    :root[data-arevias-keyboard="open"] .arevias-bottom-veil {
+      height: 6.75rem;
     }
 
     .arevias-input-shell {
@@ -483,13 +537,13 @@
     .arevias-hero-composition {
       --arevias-input-max-w: calc(100vw - 2rem);
       --arevias-composition-overlap: 1rem;
+      --arevias-composition-y: -2.95rem;
       --arevias-input-padding: 0.45rem 0.55rem 0.45rem 1.25rem;
       --arevias-input-min-h: 3rem;
       --arevias-input-font-size: 1rem;
       --arevias-placeholder-size: 1rem;
       --arevias-send-size: 2.5rem;
       --arevias-send-icon-size: 0.9rem;
-      transform: translateY(clamp(0.25rem, 2.2svh, 1.2rem));
     }
 
     .arevias-hero-logo-frame > div {
@@ -547,7 +601,7 @@
     .arevias-hero-composition {
       --arevias-input-max-w: min(calc(100vw - 2rem), 34rem);
       --arevias-composition-overlap: 0.75rem;
-      transform: translateY(0.25rem);
+      --arevias-composition-y: -2.8rem;
     }
 
     .arevias-hero-logo-frame > div {
@@ -602,6 +656,17 @@
 
     50% {
       transform: translate(-40%, -60%) scale(1.2);
+    }
+  }
+
+  @keyframes arevias-thinking-pulse {
+    0%,
+    100% {
+      opacity: 0.15;
+    }
+
+    50% {
+      opacity: 0.9;
     }
   }
 }
