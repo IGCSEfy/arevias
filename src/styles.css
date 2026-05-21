@@ -409,6 +409,10 @@
       overflow: hidden;
     }
 
+    :root[data-arevias-chat-input-focus="true"] .arevias-conversation {
+      height: var(--arevias-visual-height, 100dvh);
+    }
+
     .arevias-conversation-scroll {
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
@@ -423,12 +427,31 @@
       padding-bottom: calc(13.5rem + env(safe-area-inset-bottom));
     }
 
+    :root[data-arevias-chat-input-focus="true"] .arevias-conversation-scroll {
+      scroll-padding-bottom: var(
+        --arevias-input-dock-space,
+        calc(13.5rem + env(safe-area-inset-bottom))
+      );
+    }
+
+    :root[data-arevias-chat-input-focus="true"] .arevias-conversation-inner {
+      padding-bottom: var(
+        --arevias-input-dock-space,
+        calc(13.5rem + env(safe-area-inset-bottom))
+      );
+    }
+
     .arevias-input-dock {
       position: fixed;
+      bottom: 0;
       padding-top: 1rem;
       padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
       padding-left: max(1.5rem, env(safe-area-inset-left));
       padding-right: max(1.5rem, env(safe-area-inset-right));
+    }
+
+    :root[data-arevias-chat-input-focus="true"] .arevias-input-dock {
+      bottom: var(--arevias-keyboard-offset, 0px);
     }
 
     .arevias-input-shell {
@@ -511,6 +534,13 @@
     .arevias-conversation-inner {
       padding-top: 2rem;
       padding-bottom: calc(12.75rem + env(safe-area-inset-bottom));
+    }
+
+    :root[data-arevias-chat-input-focus="true"] .arevias-conversation-inner {
+      padding-bottom: var(
+        --arevias-input-dock-space,
+        calc(12.75rem + env(safe-area-inset-bottom))
+      );
     }
 
     .arevias-input-dock {

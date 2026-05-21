@@ -163,6 +163,107 @@ function IndexComponent() {
   }, [messages.length, thinking]);
 
   useEffect(() => {
+    if (empty) return;
+
+    const root = document.documentElement;
+    const timers = new Set<number>();
+
+    const updateKeyboardLayout = () => {
+      const viewport = window.visualViewport;
+      const viewportHeight = viewport?.height ?? window.innerHeight;
+      const keyboardOffset = viewport
+        ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+        : 0;
+      const dock = document.querySelector<HTMLElement>(".arevias-input-dock");
+      const dockHeight = dock?.getBoundingClientRect().height ?? 112;
+
+      root.style.setProperty(
+        "--arevias-visual-height",
+        `${Math.round(viewportHeight)}px`,
+      );
+      root.style.setProperty(
+        "--arevias-keyboard-offset",
+        `${Math.round(keyboardOffset)}px`,
+      );
+      root.style.setProperty(
+        "--arevias-input-dock-space",
+        `${Math.ceil(dockHeight + 28)}px`,
+      );
+    };
+
+    const clearKeyboardLayout = () => {
+      root.style.removeProperty("--arevias-visual-height");
+      root.style.removeProperty("--arevias-keyboard-offset");
+      root.style.removeProperty("--arevias-input-dock-space");
+    };
+
+    const queueScroll = () => {
+      updateKeyboardLayout();
+      stickToBottom.current = true;
+      scheduleScroll(true);
+
+      for (const delay of [120, 320, 620]) {
+        const timer = window.setTimeout(() => {
+          timers.delete(timer);
+          updateKeyboardLayout();
+          stickToBottom.current = true;
+          scheduleScroll(true);
+        }, delay);
+        timers.add(timer);
+      }
+    };
+
+    const isActiveChatInput = (target: EventTarget | null) =>
+      target instanceof HTMLTextAreaElement &&
+      Boolean(target.closest(".arevias-input-dock"));
+
+    const handleFocusIn = (event: FocusEvent) => {
+      if (!isActiveChatInput(event.target)) return;
+      root.dataset.areviasChatInputFocus = "true";
+      updateKeyboardLayout();
+      queueScroll();
+    };
+
+    const handleFocusOut = (event: FocusEvent) => {
+      if (!isActiveChatInput(event.target)) return;
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        if (isActiveChatInput(document.activeElement)) return;
+        delete root.dataset.areviasChatInputFocus;
+        clearKeyboardLayout();
+      }, 80);
+      timers.add(timer);
+    };
+
+    const handleViewportChange = () => {
+      if (root.dataset.areviasChatInputFocus === "true") {
+        updateKeyboardLayout();
+        queueScroll();
+      }
+    };
+
+    window.addEventListener("focusin", handleFocusIn);
+    window.addEventListener("focusout", handleFocusOut);
+    window.visualViewport?.addEventListener("resize", handleViewportChange);
+    window.visualViewport?.addEventListener("scroll", handleViewportChange);
+    window.addEventListener("orientationchange", handleViewportChange);
+
+    return () => {
+      for (const timer of timers) {
+        clearTimeout(timer);
+      }
+      timers.clear();
+      window.removeEventListener("focusin", handleFocusIn);
+      window.removeEventListener("focusout", handleFocusOut);
+      window.visualViewport?.removeEventListener("resize", handleViewportChange);
+      window.visualViewport?.removeEventListener("scroll", handleViewportChange);
+      window.removeEventListener("orientationchange", handleViewportChange);
+      delete root.dataset.areviasChatInputFocus;
+      clearKeyboardLayout();
+    };
+  }, [empty]);
+
+  useEffect(() => {
     return () => {
       cancelPendingScroll();
       cancelActiveScroll();
