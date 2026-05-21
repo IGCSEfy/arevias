@@ -153,12 +153,8 @@ function IndexComponent() {
         const keyboardOpen = keyboardInset > 80;
 
         root.style.setProperty(
-          "--arevias-visual-viewport-height",
-          `${visualHeight}px`,
-        );
-        root.style.setProperty(
-          "--arevias-visual-viewport-offset-top",
-          `${visualOffsetTop}px`,
+          "--arevias-keyboard-inset",
+          `${keyboardOpen ? keyboardInset : 0}px`,
         );
         root.dataset.areviasKeyboard = keyboardOpen ? "open" : "closed";
 
@@ -195,8 +191,7 @@ function IndexComponent() {
       viewport?.removeEventListener("scroll", syncViewport);
       window.removeEventListener("resize", syncViewport);
       window.removeEventListener("orientationchange", syncViewport);
-      root.style.removeProperty("--arevias-visual-viewport-height");
-      root.style.removeProperty("--arevias-visual-viewport-offset-top");
+      root.style.removeProperty("--arevias-keyboard-inset");
       delete root.dataset.areviasKeyboard;
     };
   }, []);
