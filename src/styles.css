@@ -57,6 +57,7 @@
   --font-mono: "JetBrains Mono", monospace;
   --arevias-app-height: 100dvh;
   --arevias-visible-height: 100dvh;
+  --arevias-viewport-offset-top: 0px;
   --arevias-composer-height: 5.5rem;
   --arevias-keyboard-inset: 0px;
 }
@@ -430,6 +431,53 @@
       width: min(82vw, 540px) !important;
     }
 
+    :root[data-arevias-keyboard="open"] .arevias-hero-section {
+      align-items: stretch;
+      justify-content: flex-start;
+      min-height: var(--arevias-app-height);
+      overflow: hidden;
+    }
+
+    :root[data-arevias-keyboard="open"] .arevias-hero-composition {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: var(--arevias-app-height);
+      max-width: none;
+      transform: none;
+      pointer-events: none;
+    }
+
+    :root[data-arevias-keyboard="open"] .arevias-hero-composition::before {
+      top: var(--arevias-viewport-offset-top);
+      bottom: var(--arevias-keyboard-inset);
+    }
+
+    :root[data-arevias-keyboard="open"] .arevias-hero-logo-frame {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(var(--arevias-viewport-offset-top) + clamp(2rem, 10vh, 4.5rem));
+      opacity: 0.35;
+    }
+
+    :root[data-arevias-keyboard="open"] .arevias-hero-logo-frame > div {
+      width: min(70vw, 360px) !important;
+    }
+
+    :root[data-arevias-keyboard="open"] .arevias-hero-input-frame {
+      position: fixed;
+      z-index: 30;
+      left: 50%;
+      right: auto;
+      bottom: calc(var(--arevias-keyboard-inset) + 0.75rem);
+      width: min(calc(100vw - 2rem), 42rem);
+      max-width: calc(100vw - 2rem);
+      margin: 0;
+      transform: translate3d(-50%, 0, 0);
+      pointer-events: auto;
+    }
+
     .arevias-intro-blob-field {
       inset: -8%;
     }
@@ -472,7 +520,7 @@
       position: fixed;
       left: 0;
       right: 0;
-      bottom: var(--arevias-keyboard-inset);
+      bottom: 0;
       transform: translateZ(0);
       backface-visibility: hidden;
       contain: layout paint;
@@ -486,7 +534,7 @@
       position: fixed;
       left: 0;
       right: 0;
-      bottom: var(--arevias-keyboard-inset);
+      bottom: 0;
       height: calc(var(--arevias-composer-height) + 5rem);
     }
 
@@ -504,6 +552,7 @@
     }
 
     :root[data-arevias-keyboard="open"] .arevias-input-dock {
+      bottom: 0;
       padding-top: 0.75rem;
       padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
     }

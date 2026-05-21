@@ -190,6 +190,7 @@ function IndexComponent() {
         raf = null;
 
         const visualHeight = viewport?.height ?? window.innerHeight;
+        const visualOffsetTop = viewport?.offsetTop ?? 0;
         const currentLayoutHeight = Math.max(
           window.innerHeight,
           document.documentElement.clientHeight,
@@ -206,7 +207,10 @@ function IndexComponent() {
           layoutViewportHeight.current,
           currentLayoutHeight,
         );
-        const keyboardInset = Math.max(0, layoutCandidate - visualHeight);
+        const keyboardInset = Math.max(
+          0,
+          layoutCandidate - visualHeight - visualOffsetTop,
+        );
         const keyboardOpen = focusedTextarea && keyboardInset > 80;
 
         if (!keyboardOpen) {
@@ -222,6 +226,10 @@ function IndexComponent() {
         root.style.setProperty(
           "--arevias-visible-height",
           `${Math.max(0, appHeight - activeInset)}px`,
+        );
+        root.style.setProperty(
+          "--arevias-viewport-offset-top",
+          `${keyboardOpen ? visualOffsetTop : 0}px`,
         );
         root.style.setProperty(
           "--arevias-keyboard-inset",
@@ -246,7 +254,17 @@ function IndexComponent() {
       });
     };
 
-    const syncAndScroll = () => syncViewport(true);
+    const settleTimers = new Set<number>();
+    const syncAndScroll = () => {
+      syncViewport(true);
+      for (const delay of [80, 180, 320]) {
+        const timer = window.setTimeout(() => {
+          settleTimers.delete(timer);
+          syncViewport(true);
+        }, delay);
+        settleTimers.add(timer);
+      }
+    };
     const syncOnly = () => syncViewport(false);
 
     syncViewport(false);
@@ -263,6 +281,10 @@ function IndexComponent() {
       if (scrollTimer != null) {
         clearTimeout(scrollTimer);
       }
+      for (const timer of settleTimers) {
+        clearTimeout(timer);
+      }
+      settleTimers.clear();
       viewport?.removeEventListener("resize", syncAndScroll);
       window.removeEventListener("resize", syncOnly);
       window.removeEventListener("orientationchange", syncAndScroll);
@@ -270,6 +292,7 @@ function IndexComponent() {
       window.removeEventListener("focusout", syncOnly);
       root.style.removeProperty("--arevias-app-height");
       root.style.removeProperty("--arevias-visible-height");
+      root.style.removeProperty("--arevias-viewport-offset-top");
       root.style.removeProperty("--arevias-keyboard-inset");
       delete root.dataset.areviasKeyboard;
     };
@@ -305,8 +328,6 @@ function IndexComponent() {
   }, [messages.length > 0]);
 
   useEffect(() => {
-    if (empty) return;
-
     let lastTouchY = 0;
 
     const handleTouchStart = (event: TouchEvent) => {
@@ -314,6 +335,11 @@ function IndexComponent() {
     };
 
     const handleTouchMove = (event: TouchEvent) => {
+      if (empty) {
+        event.preventDefault();
+        return;
+      }
+
       const scroller = scrollRef.current;
       const target = event.target;
 
