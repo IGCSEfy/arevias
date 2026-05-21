@@ -40,10 +40,14 @@ function IndexComponent() {
   const previousRender = useRef({ messageCount: 0, thinking: false });
   const messageCountRef = useRef(0);
   const layoutViewportHeight = useRef(0);
+  const usesKeyboardViewport = useRef(false);
   const empty = messages.length === 0;
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
+    usesKeyboardViewport.current =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }, []);
 
   useEffect(() => {
@@ -181,6 +185,12 @@ function IndexComponent() {
     let raf: number | null = null;
     let scrollTimer: number | null = null;
 
+    const resetPageScroll = () => {
+      window.scrollTo({ left: 0, top: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+
     const syncViewport = (forceScroll = false) => {
       if (raf != null) {
         cancelAnimationFrame(raf);
@@ -236,6 +246,12 @@ function IndexComponent() {
           `${activeInset}px`,
         );
         root.dataset.areviasKeyboard = keyboardOpen ? "open" : "closed";
+        root.dataset.areviasKeyboardViewport =
+          keyboardOpen && usesKeyboardViewport.current ? "native" : "measured";
+
+        if (keyboardOpen) {
+          resetPageScroll();
+        }
 
         if (
           keyboardOpen &&
@@ -266,9 +282,15 @@ function IndexComponent() {
       }
     };
     const syncOnly = () => syncViewport(false);
+    const resetKeyboardPan = () => {
+      if (root.dataset.areviasKeyboard === "open") {
+        resetPageScroll();
+      }
+    };
 
     syncViewport(false);
     viewport?.addEventListener("resize", syncAndScroll);
+    viewport?.addEventListener("scroll", resetKeyboardPan);
     window.addEventListener("resize", syncOnly);
     window.addEventListener("orientationchange", syncAndScroll);
     window.addEventListener("focusin", syncAndScroll);
@@ -286,6 +308,7 @@ function IndexComponent() {
       }
       settleTimers.clear();
       viewport?.removeEventListener("resize", syncAndScroll);
+      viewport?.removeEventListener("scroll", resetKeyboardPan);
       window.removeEventListener("resize", syncOnly);
       window.removeEventListener("orientationchange", syncAndScroll);
       window.removeEventListener("focusin", syncAndScroll);
@@ -295,6 +318,7 @@ function IndexComponent() {
       root.style.removeProperty("--arevias-viewport-offset-top");
       root.style.removeProperty("--arevias-keyboard-inset");
       delete root.dataset.areviasKeyboard;
+      delete root.dataset.areviasKeyboardViewport;
     };
   }, []);
 

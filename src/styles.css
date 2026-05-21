@@ -467,7 +467,7 @@
 
     :root[data-arevias-keyboard="open"] .arevias-hero-input-frame {
       position: fixed;
-      z-index: 30;
+      z-index: 40;
       left: 50%;
       right: auto;
       bottom: calc(var(--arevias-keyboard-inset) + 0.75rem);
@@ -476,6 +476,24 @@
       margin: 0;
       transform: translate3d(-50%, 0, 0);
       pointer-events: auto;
+    }
+
+    :root[data-arevias-keyboard-viewport="native"] .arevias-hero-input-frame {
+      left: max(1rem, env(safe-area-inset-left));
+      right: max(1rem, env(safe-area-inset-right));
+      bottom: max(0.75rem, env(safe-area-inset-bottom));
+      width: auto;
+      max-width: none;
+      transform: translateZ(0);
+    }
+
+    :root[data-arevias-keyboard-viewport="native"] .arevias-hero-input-frame [data-arevias-chat-input] {
+      max-width: none !important;
+    }
+
+    :root[data-arevias-keyboard-viewport="native"] .arevias-hero-input-frame [data-arevias-input-pill] {
+      width: 100%;
+      max-width: 100%;
     }
 
     .arevias-intro-blob-field {
@@ -520,7 +538,7 @@
       position: fixed;
       left: 0;
       right: 0;
-      bottom: 0;
+      bottom: var(--arevias-keyboard-inset);
       transform: translateZ(0);
       backface-visibility: hidden;
       contain: layout paint;
@@ -534,7 +552,7 @@
       position: fixed;
       left: 0;
       right: 0;
-      bottom: 0;
+      bottom: var(--arevias-keyboard-inset);
       height: calc(var(--arevias-composer-height) + 5rem);
     }
 
@@ -552,9 +570,13 @@
     }
 
     :root[data-arevias-keyboard="open"] .arevias-input-dock {
-      bottom: 0;
       padding-top: 0.75rem;
       padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+
+    :root[data-arevias-keyboard-viewport="native"] .arevias-input-dock,
+    :root[data-arevias-keyboard-viewport="native"] .arevias-bottom-veil {
+      bottom: 0;
     }
 
     :root[data-arevias-keyboard="open"] .arevias-bottom-veil {
