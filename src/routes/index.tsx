@@ -181,7 +181,7 @@ function IndexComponent() {
     let raf: number | null = null;
     let scrollTimer: number | null = null;
 
-    const syncViewport = () => {
+    const syncViewport = (forceScroll = false) => {
       if (raf != null) {
         cancelAnimationFrame(raf);
       }
@@ -190,7 +190,6 @@ function IndexComponent() {
         raf = null;
 
         const visualHeight = viewport?.height ?? window.innerHeight;
-        const visualOffsetTop = viewport?.offsetTop ?? 0;
         const currentLayoutHeight = Math.max(
           window.innerHeight,
           document.documentElement.clientHeight,
@@ -201,15 +200,14 @@ function IndexComponent() {
           layoutViewportHeight.current = currentLayoutHeight;
         }
 
-        const stableLayoutHeight = Math.max(
+        const focusedTextarea =
+          document.activeElement instanceof HTMLTextAreaElement;
+        const layoutCandidate = Math.max(
           layoutViewportHeight.current,
           currentLayoutHeight,
         );
-        const keyboardInset = Math.max(
-          0,
-          stableLayoutHeight - visualHeight - visualOffsetTop,
-        );
-        const keyboardOpen = keyboardInset > 80;
+        const keyboardInset = Math.max(0, layoutCandidate - visualHeight);
+        const keyboardOpen = focusedTextarea && keyboardInset > 80;
 
         if (!keyboardOpen) {
           layoutViewportHeight.current = currentLayoutHeight;
@@ -234,7 +232,8 @@ function IndexComponent() {
         if (
           keyboardOpen &&
           messageCountRef.current > 0 &&
-          document.activeElement instanceof HTMLTextAreaElement
+          focusedTextarea &&
+          forceScroll
         ) {
           if (scrollTimer != null) {
             clearTimeout(scrollTimer);
@@ -242,16 +241,20 @@ function IndexComponent() {
           scrollTimer = window.setTimeout(() => {
             scrollTimer = null;
             scheduleScroll(true);
-          }, 120);
+          }, 180);
         }
       });
     };
 
-    syncViewport();
-    viewport?.addEventListener("resize", syncViewport);
-    viewport?.addEventListener("scroll", syncViewport);
-    window.addEventListener("resize", syncViewport);
-    window.addEventListener("orientationchange", syncViewport);
+    const syncAndScroll = () => syncViewport(true);
+    const syncOnly = () => syncViewport(false);
+
+    syncViewport(false);
+    viewport?.addEventListener("resize", syncAndScroll);
+    window.addEventListener("resize", syncOnly);
+    window.addEventListener("orientationchange", syncAndScroll);
+    window.addEventListener("focusin", syncAndScroll);
+    window.addEventListener("focusout", syncOnly);
 
     return () => {
       if (raf != null) {
@@ -260,10 +263,11 @@ function IndexComponent() {
       if (scrollTimer != null) {
         clearTimeout(scrollTimer);
       }
-      viewport?.removeEventListener("resize", syncViewport);
-      viewport?.removeEventListener("scroll", syncViewport);
-      window.removeEventListener("resize", syncViewport);
-      window.removeEventListener("orientationchange", syncViewport);
+      viewport?.removeEventListener("resize", syncAndScroll);
+      window.removeEventListener("resize", syncOnly);
+      window.removeEventListener("orientationchange", syncAndScroll);
+      window.removeEventListener("focusin", syncAndScroll);
+      window.removeEventListener("focusout", syncOnly);
       root.style.removeProperty("--arevias-app-height");
       root.style.removeProperty("--arevias-visible-height");
       root.style.removeProperty("--arevias-keyboard-inset");
@@ -284,7 +288,6 @@ function IndexComponent() {
     const handleUserScrollIntent = () => {
       cancelPendingScroll();
       cancelActiveScroll();
-      el.scrollTo({ top: el.scrollTop, behavior: "auto" });
       updateStickiness();
     };
 
@@ -300,6 +303,52 @@ function IndexComponent() {
       el.removeEventListener("pointerdown", handleUserScrollIntent);
     };
   }, [messages.length > 0]);
+
+  useEffect(() => {
+    if (empty) return;
+
+    let lastTouchY = 0;
+
+    const handleTouchStart = (event: TouchEvent) => {
+      lastTouchY = event.touches[0]?.clientY ?? 0;
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      const scroller = scrollRef.current;
+      const target = event.target;
+
+      if (!scroller || !(target instanceof Node)) return;
+
+      if (!scroller.contains(target)) {
+        event.preventDefault();
+        return;
+      }
+
+      const nextY = event.touches[0]?.clientY ?? lastTouchY;
+      const deltaY = nextY - lastTouchY;
+      lastTouchY = nextY;
+
+      const atTop = scroller.scrollTop <= 0;
+      const atBottom =
+        scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+
+      if ((atTop && deltaY > 0) || (atBottom && deltaY < 0)) {
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    document.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, [empty]);
 
   useEffect(() => {
     const messageAdded = messages.length > previousRender.current.messageCount;

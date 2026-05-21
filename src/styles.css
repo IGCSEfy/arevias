@@ -445,7 +445,11 @@
     .arevias-conversation-scroll {
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
+      touch-action: pan-y;
       overflow-x: hidden;
+      overflow-anchor: none;
+      height: var(--arevias-app-height);
+      max-height: var(--arevias-app-height);
       scroll-padding-bottom: calc(
         var(--arevias-composer-height) + var(--arevias-keyboard-inset) + 1rem
       );
@@ -456,6 +460,8 @@
 
     .arevias-conversation-inner {
       width: min(100%, 42rem);
+      box-sizing: border-box;
+      min-height: var(--arevias-app-height);
       padding-bottom: calc(
         var(--arevias-composer-height) + 5rem + env(safe-area-inset-bottom) +
           var(--arevias-keyboard-inset)
@@ -463,9 +469,13 @@
     }
 
     .arevias-input-dock {
-      position: absolute;
+      position: fixed;
+      left: 0;
+      right: 0;
       bottom: var(--arevias-keyboard-inset);
-      will-change: bottom;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      contain: layout paint;
       padding-top: 1rem;
       padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
       padding-left: max(1.5rem, env(safe-area-inset-left));
@@ -473,18 +483,19 @@
     }
 
     .arevias-bottom-veil {
+      position: fixed;
+      left: 0;
+      right: 0;
       bottom: var(--arevias-keyboard-inset);
       height: calc(var(--arevias-composer-height) + 5rem);
     }
 
     :root[data-arevias-keyboard="open"] .arevias-conversation-scroll {
-      display: flex;
-      flex-direction: column;
       padding-top: max(1.25rem, calc(env(safe-area-inset-top) + 0.75rem));
     }
 
     :root[data-arevias-keyboard="open"] .arevias-conversation-inner {
-      margin-top: auto;
+      min-height: var(--arevias-visible-height);
       padding-top: 1rem;
       padding-bottom: calc(
         var(--arevias-composer-height) + 1rem + env(safe-area-inset-bottom) +
