@@ -6,6 +6,7 @@ import {
   Outlet,
   Scripts,
 } from "@tanstack/react-router";
+import areviasLogo from "@/assets/arevias-logo.png";
 import "../styles.css";
 
 export const Route = createRootRoute({
@@ -23,7 +24,10 @@ export const Route = createRootRoute({
       { name: "twitter:title", content: "Arevias" },
       { name: "twitter:description", content: "AI but Human." },
     ],
-    links: [{ rel: "icon", href: "data:," }],
+    links: [
+      { rel: "icon", type: "image/png", href: areviasLogo },
+      { rel: "apple-touch-icon", href: areviasLogo },
+    ],
   }),
   component: RootComponent,
 });
