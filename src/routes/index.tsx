@@ -31,23 +31,16 @@ function IndexComponent() {
   const [loaded, setLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputDockRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const pendingScrollRaf = useRef<number | null>(null);
   const pendingScrollTimer = useRef<number | null>(null);
   const activeScrollRaf = useRef<number | null>(null);
   const autoScrolling = useRef(false);
   const previousRender = useRef({ messageCount: 0, thinking: false });
-  const messageCountRef = useRef(0);
-  const layoutViewportHeight = useRef(0);
-  const usesKeyboardViewport = useRef(false);
   const empty = messages.length === 0;
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
-    usesKeyboardViewport.current =
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }, []);
 
   useEffect(() => {
@@ -129,200 +122,6 @@ function IndexComponent() {
   };
 
   useEffect(() => {
-    messageCountRef.current = messages.length;
-  }, [messages.length]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    let observer: ResizeObserver | null = null;
-    let raf: number | null = null;
-
-    const syncDockHeight = () => {
-      if (raf != null) {
-        cancelAnimationFrame(raf);
-      }
-
-      raf = requestAnimationFrame(() => {
-        raf = null;
-        const dock = inputDockRef.current;
-        if (!dock) return;
-
-        root.style.setProperty(
-          "--arevias-composer-height",
-          `${Math.ceil(dock.getBoundingClientRect().height)}px`,
-        );
-      });
-    };
-
-    const observeDock = () => {
-      const dock = inputDockRef.current;
-      if (!dock) {
-        raf = requestAnimationFrame(observeDock);
-        return;
-      }
-
-      syncDockHeight();
-      observer = new ResizeObserver(syncDockHeight);
-      observer.observe(dock);
-    };
-
-    observeDock();
-    window.addEventListener("resize", syncDockHeight);
-
-    return () => {
-      if (raf != null) {
-        cancelAnimationFrame(raf);
-      }
-      observer?.disconnect();
-      window.removeEventListener("resize", syncDockHeight);
-      root.style.removeProperty("--arevias-composer-height");
-    };
-  }, [empty, replyTo]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const viewport = window.visualViewport;
-    let raf: number | null = null;
-    let scrollTimer: number | null = null;
-
-    const resetPageScroll = () => {
-      window.scrollTo({ left: 0, top: 0, behavior: "auto" });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    };
-
-    const syncViewport = (forceScroll = false) => {
-      if (raf != null) {
-        cancelAnimationFrame(raf);
-      }
-
-      raf = requestAnimationFrame(() => {
-        raf = null;
-
-        const visualHeight = viewport?.height ?? window.innerHeight;
-        const visualOffsetTop = viewport?.offsetTop ?? 0;
-        const currentLayoutHeight = Math.max(
-          window.innerHeight,
-          document.documentElement.clientHeight,
-          visualHeight,
-        );
-
-        if (layoutViewportHeight.current === 0) {
-          layoutViewportHeight.current = currentLayoutHeight;
-        }
-
-        const focusedTextarea =
-          document.activeElement instanceof HTMLTextAreaElement;
-        const layoutCandidate = Math.max(
-          layoutViewportHeight.current,
-          currentLayoutHeight,
-        );
-        const keyboardInset = Math.max(
-          0,
-          layoutCandidate - visualHeight - visualOffsetTop,
-        );
-        const keyboardOpen = focusedTextarea && keyboardInset > 80;
-
-        if (!keyboardOpen) {
-          layoutViewportHeight.current = currentLayoutHeight;
-        }
-
-        const appHeight = keyboardOpen
-          ? layoutViewportHeight.current
-          : currentLayoutHeight;
-        const activeInset = keyboardOpen ? keyboardInset : 0;
-
-        root.style.setProperty("--arevias-app-height", `${appHeight}px`);
-        root.style.setProperty(
-          "--arevias-visible-height",
-          `${Math.max(0, appHeight - activeInset)}px`,
-        );
-        root.style.setProperty(
-          "--arevias-viewport-offset-top",
-          `${keyboardOpen ? visualOffsetTop : 0}px`,
-        );
-        root.style.setProperty(
-          "--arevias-keyboard-inset",
-          `${activeInset}px`,
-        );
-        root.dataset.areviasKeyboard = keyboardOpen ? "open" : "closed";
-        root.dataset.areviasKeyboardViewport =
-          keyboardOpen && usesKeyboardViewport.current ? "native" : "measured";
-
-        if (keyboardOpen) {
-          resetPageScroll();
-        }
-
-        if (
-          keyboardOpen &&
-          messageCountRef.current > 0 &&
-          focusedTextarea &&
-          forceScroll
-        ) {
-          if (scrollTimer != null) {
-            clearTimeout(scrollTimer);
-          }
-          scrollTimer = window.setTimeout(() => {
-            scrollTimer = null;
-            scheduleScroll(true);
-          }, 180);
-        }
-      });
-    };
-
-    const settleTimers = new Set<number>();
-    const syncAndScroll = () => {
-      syncViewport(true);
-      for (const delay of [80, 180, 320]) {
-        const timer = window.setTimeout(() => {
-          settleTimers.delete(timer);
-          syncViewport(true);
-        }, delay);
-        settleTimers.add(timer);
-      }
-    };
-    const syncOnly = () => syncViewport(false);
-    const resetKeyboardPan = () => {
-      if (root.dataset.areviasKeyboard === "open") {
-        resetPageScroll();
-      }
-    };
-
-    syncViewport(false);
-    viewport?.addEventListener("resize", syncAndScroll);
-    viewport?.addEventListener("scroll", resetKeyboardPan);
-    window.addEventListener("resize", syncOnly);
-    window.addEventListener("orientationchange", syncAndScroll);
-    window.addEventListener("focusin", syncAndScroll);
-    window.addEventListener("focusout", syncOnly);
-
-    return () => {
-      if (raf != null) {
-        cancelAnimationFrame(raf);
-      }
-      if (scrollTimer != null) {
-        clearTimeout(scrollTimer);
-      }
-      for (const timer of settleTimers) {
-        clearTimeout(timer);
-      }
-      settleTimers.clear();
-      viewport?.removeEventListener("resize", syncAndScroll);
-      viewport?.removeEventListener("scroll", resetKeyboardPan);
-      window.removeEventListener("resize", syncOnly);
-      window.removeEventListener("orientationchange", syncAndScroll);
-      window.removeEventListener("focusin", syncAndScroll);
-      window.removeEventListener("focusout", syncOnly);
-      root.style.removeProperty("--arevias-app-height");
-      root.style.removeProperty("--arevias-visible-height");
-      root.style.removeProperty("--arevias-viewport-offset-top");
-      root.style.removeProperty("--arevias-keyboard-inset");
-      delete root.dataset.areviasKeyboard;
-      delete root.dataset.areviasKeyboardViewport;
-    };
-  }, []);
-
-  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
 
@@ -335,6 +134,7 @@ function IndexComponent() {
     const handleUserScrollIntent = () => {
       cancelPendingScroll();
       cancelActiveScroll();
+      el.scrollTo({ top: el.scrollTop, behavior: "auto" });
       updateStickiness();
     };
 
@@ -350,55 +150,6 @@ function IndexComponent() {
       el.removeEventListener("pointerdown", handleUserScrollIntent);
     };
   }, [messages.length > 0]);
-
-  useEffect(() => {
-    let lastTouchY = 0;
-
-    const handleTouchStart = (event: TouchEvent) => {
-      lastTouchY = event.touches[0]?.clientY ?? 0;
-    };
-
-    const handleTouchMove = (event: TouchEvent) => {
-      if (empty) {
-        event.preventDefault();
-        return;
-      }
-
-      const scroller = scrollRef.current;
-      const target = event.target;
-
-      if (!scroller || !(target instanceof Node)) return;
-
-      if (!scroller.contains(target)) {
-        event.preventDefault();
-        return;
-      }
-
-      const nextY = event.touches[0]?.clientY ?? lastTouchY;
-      const deltaY = nextY - lastTouchY;
-      lastTouchY = nextY;
-
-      const atTop = scroller.scrollTop <= 0;
-      const atBottom =
-        scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
-
-      if ((atTop && deltaY > 0) || (atBottom && deltaY < 0)) {
-        event.preventDefault();
-      }
-    };
-
-    document.addEventListener("touchstart", handleTouchStart, {
-      passive: true,
-    });
-    document.addEventListener("touchmove", handleTouchMove, {
-      passive: false,
-    });
-
-    return () => {
-      document.removeEventListener("touchstart", handleTouchStart);
-      document.removeEventListener("touchmove", handleTouchMove);
-    };
-  }, [empty]);
 
   useEffect(() => {
     const messageAdded = messages.length > previousRender.current.messageCount;
@@ -491,7 +242,7 @@ function IndexComponent() {
     <div className="arevias-app-shell fixed inset-0 overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 radial-glow" />
       <CursorGlow />
-      <main className="arevias-main relative z-10 flex overflow-hidden flex-col">
+      <main className="arevias-main relative z-10 flex h-[100dvh] overflow-hidden flex-col">
         <AnimatePresence mode="wait">
           {empty ? (
             <motion.section
@@ -568,17 +319,14 @@ function IndexComponent() {
 
               <div
                 aria-hidden
-                className="arevias-bottom-veil pointer-events-none absolute inset-x-0 bottom-0"
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-64"
                 style={{
                   background:
                     "linear-gradient(to top, var(--color-background) 38%, color-mix(in oklab, var(--color-background) 70%, transparent) 72%, transparent)",
                 }}
               />
 
-              <div
-                ref={inputDockRef}
-                className="arevias-input-dock absolute inset-x-0 z-10 px-6 md:px-14 pb-8 pt-4"
-              >
+              <div className="arevias-input-dock absolute inset-x-0 bottom-0 z-10 px-6 md:px-14 pb-8 pt-4">
                 <div className="arevias-input-shell relative w-full max-w-2xl mx-auto">
                   <div className="relative">
                     <ChatInput
