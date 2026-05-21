@@ -31,6 +31,7 @@ function IndexComponent() {
   const [loaded, setLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputDockRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const pendingScrollRaf = useRef<number | null>(null);
   const pendingScrollTimer = useRef<number | null>(null);
@@ -38,6 +39,7 @@ function IndexComponent() {
   const autoScrolling = useRef(false);
   const previousRender = useRef({ messageCount: 0, thinking: false });
   const messageCountRef = useRef(0);
+  const layoutViewportHeight = useRef(0);
   const empty = messages.length === 0;
 
   useEffect(() => {
@@ -128,6 +130,53 @@ function IndexComponent() {
 
   useEffect(() => {
     const root = document.documentElement;
+    let observer: ResizeObserver | null = null;
+    let raf: number | null = null;
+
+    const syncDockHeight = () => {
+      if (raf != null) {
+        cancelAnimationFrame(raf);
+      }
+
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        const dock = inputDockRef.current;
+        if (!dock) return;
+
+        root.style.setProperty(
+          "--arevias-composer-height",
+          `${Math.ceil(dock.getBoundingClientRect().height)}px`,
+        );
+      });
+    };
+
+    const observeDock = () => {
+      const dock = inputDockRef.current;
+      if (!dock) {
+        raf = requestAnimationFrame(observeDock);
+        return;
+      }
+
+      syncDockHeight();
+      observer = new ResizeObserver(syncDockHeight);
+      observer.observe(dock);
+    };
+
+    observeDock();
+    window.addEventListener("resize", syncDockHeight);
+
+    return () => {
+      if (raf != null) {
+        cancelAnimationFrame(raf);
+      }
+      observer?.disconnect();
+      window.removeEventListener("resize", syncDockHeight);
+      root.style.removeProperty("--arevias-composer-height");
+    };
+  }, [empty, replyTo]);
+
+  useEffect(() => {
+    const root = document.documentElement;
     const viewport = window.visualViewport;
     let raf: number | null = null;
     let scrollTimer: number | null = null;
@@ -142,19 +191,43 @@ function IndexComponent() {
 
         const visualHeight = viewport?.height ?? window.innerHeight;
         const visualOffsetTop = viewport?.offsetTop ?? 0;
-        const layoutHeight = Math.max(
+        const currentLayoutHeight = Math.max(
           window.innerHeight,
           document.documentElement.clientHeight,
+          visualHeight,
+        );
+
+        if (layoutViewportHeight.current === 0) {
+          layoutViewportHeight.current = currentLayoutHeight;
+        }
+
+        const stableLayoutHeight = Math.max(
+          layoutViewportHeight.current,
+          currentLayoutHeight,
         );
         const keyboardInset = Math.max(
           0,
-          layoutHeight - visualHeight - visualOffsetTop,
+          stableLayoutHeight - visualHeight - visualOffsetTop,
         );
         const keyboardOpen = keyboardInset > 80;
 
+        if (!keyboardOpen) {
+          layoutViewportHeight.current = currentLayoutHeight;
+        }
+
+        const appHeight = keyboardOpen
+          ? layoutViewportHeight.current
+          : currentLayoutHeight;
+        const activeInset = keyboardOpen ? keyboardInset : 0;
+
+        root.style.setProperty("--arevias-app-height", `${appHeight}px`);
+        root.style.setProperty(
+          "--arevias-visible-height",
+          `${Math.max(0, appHeight - activeInset)}px`,
+        );
         root.style.setProperty(
           "--arevias-keyboard-inset",
-          `${keyboardOpen ? keyboardInset : 0}px`,
+          `${activeInset}px`,
         );
         root.dataset.areviasKeyboard = keyboardOpen ? "open" : "closed";
 
@@ -191,6 +264,8 @@ function IndexComponent() {
       viewport?.removeEventListener("scroll", syncViewport);
       window.removeEventListener("resize", syncViewport);
       window.removeEventListener("orientationchange", syncViewport);
+      root.style.removeProperty("--arevias-app-height");
+      root.style.removeProperty("--arevias-visible-height");
       root.style.removeProperty("--arevias-keyboard-inset");
       delete root.dataset.areviasKeyboard;
     };
@@ -401,7 +476,10 @@ function IndexComponent() {
                 }}
               />
 
-              <div className="arevias-input-dock absolute inset-x-0 bottom-0 z-10 px-6 md:px-14 pb-8 pt-4">
+              <div
+                ref={inputDockRef}
+                className="arevias-input-dock absolute inset-x-0 z-10 px-6 md:px-14 pb-8 pt-4"
+              >
                 <div className="arevias-input-shell relative w-full max-w-2xl mx-auto">
                   <div className="relative">
                     <ChatInput
