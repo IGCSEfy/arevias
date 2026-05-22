@@ -1,3 +1,15 @@
+export const AI_FALLBACK_GENERIC = "something's off, try again in a bit";
+export const AI_FALLBACK_RATE_LIMIT = "too many messages rn, give me a sec";
+
+const AI_FALLBACK_TEXTS: ReadonlySet<string> = new Set([
+  AI_FALLBACK_GENERIC,
+  AI_FALLBACK_RATE_LIMIT,
+]);
+
+export function isFallbackReplyText(text: string): boolean {
+  return AI_FALLBACK_TEXTS.has(text);
+}
+
 export type AiRole = "user" | "ai";
 
 export type AiReplyContext = {

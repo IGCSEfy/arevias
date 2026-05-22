@@ -8,7 +8,7 @@ import { CursorGlow } from "@/components/arevias/CursorGlow";
 import { MessageBlock } from "@/components/arevias/Message";
 import type { Message } from "@/components/arevias/Message";
 import { ThinkingDots } from "@/components/arevias/Thinking";
-import { ai } from "@/lib/ai";
+import { ai, isFallbackReplyText } from "@/lib/ai";
 import type { AiHistoryMessage } from "@/lib/ai";
 
 export const Route = createFileRoute("/")({
@@ -30,7 +30,6 @@ function IndexComponent() {
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [loaded, setLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const pendingScrollRaf = useRef<number | null>(null);
   const pendingScrollTimer = useRef<number | null>(null);
@@ -289,7 +288,10 @@ function IndexComponent() {
     const responseStartedAt = performance.now();
     const parts = await ai.generateReplyParts({
       message: text,
-      history: messages.slice(-8).map(toAiHistory),
+      history: messages
+        .filter((m) => !(m.role === "ai" && isFallbackReplyText(m.text)))
+        .slice(-8)
+        .map(toAiHistory),
       replyTo: currentReply,
     });
     const responseWaitMs = performance.now() - responseStartedAt;
@@ -365,7 +367,7 @@ function IndexComponent() {
               <div aria-hidden className="arevias-hero-vignette" />
               <div className="arevias-hero-composition relative z-10 w-full mx-auto">
                 <div className="arevias-intro-headline arevias-hero-logo-frame pointer-events-none">
-                  <AmbientLogo width={540} opacity={0.2} />
+                  <AmbientLogo width={540} />
                 </div>
                 <div className="arevias-intro-cta arevias-hero-input-frame relative">
                   <ChatInput onSend={handleSend} disableEntranceMotion />
@@ -384,7 +386,7 @@ function IndexComponent() {
                 ref={scrollRef}
                 className="arevias-conversation-scroll overscroll-contain flex-1 min-h-0 overflow-y-auto px-6 md:px-14 pt-16"
               >
-                <div className="arevias-conversation-inner max-w-3xl mx-auto py-10 space-y-6 pb-[220px]">
+                <div role="log" aria-live="polite" className="arevias-conversation-inner max-w-3xl mx-auto py-10 space-y-6 pb-[220px]">
                   {messages.map((m, i) => {
                     const prev = messages[i - 1];
                     const tightToPrev = prev && prev.role === m.role && !m.replyTo;
@@ -414,7 +416,7 @@ function IndexComponent() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                  <div ref={bottomRef} aria-hidden className="h-px w-full" />
+                  <div aria-hidden className="h-px w-full" />
                 </div>
               </div>
 

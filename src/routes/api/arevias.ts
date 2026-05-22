@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { AiReplyRequest, AiReplyResponse } from "@/lib/ai/types";
+import { AI_FALLBACK_GENERIC, AI_FALLBACK_RATE_LIMIT } from "@/lib/ai/types";
 
 export const Route = createFileRoute("/api/arevias")({
   server: {
@@ -17,8 +18,8 @@ export const Route = createFileRoute("/api/arevias")({
         } catch (error) {
           return json({
             text: isRateLimit(error)
-              ? "too many messages rn, give me a sec"
-              : "something's off, try again in a bit",
+              ? AI_FALLBACK_RATE_LIMIT
+              : AI_FALLBACK_GENERIC,
           });
         }
       },

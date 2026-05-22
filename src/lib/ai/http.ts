@@ -1,6 +1,5 @@
 import type { AiAdapter, AiHistoryMessage, AiReplyRequest } from "./types";
-
-const FALLBACK_REPLY = "something's off, try again in a bit";
+import { AI_FALLBACK_GENERIC } from "./types";
 
 export class HttpAiAdapter implements AiAdapter {
   async generateReplyParts(input: AiReplyRequest): Promise<string[]> {
@@ -17,9 +16,9 @@ export class HttpAiAdapter implements AiAdapter {
       const data = (await response.json()) as Partial<{ text: unknown }>;
       const text = typeof data.text === "string" ? data.text.trim() : "";
 
-      return splitReplyText(text || FALLBACK_REPLY);
+      return splitReplyText(text || AI_FALLBACK_GENERIC);
     } catch {
-      return [FALLBACK_REPLY];
+      return [AI_FALLBACK_GENERIC];
     }
   }
 }
@@ -49,7 +48,7 @@ function splitReplyText(text: string) {
     .trim();
 
   if (!normalized) {
-    return [FALLBACK_REPLY];
+    return [AI_FALLBACK_GENERIC];
   }
 
   const lineParts = normalized

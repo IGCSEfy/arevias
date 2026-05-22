@@ -6,7 +6,6 @@ export function AmbientLogo({
   width = 520,
 }: {
   width?: number;
-  opacity?: number;
 }) {
   return (
     <div

@@ -185,6 +185,7 @@ export function ChatInput({
                 onBlur={() => setFocused(false)}
                 onKeyDown={onKeyDown}
                 rows={1}
+                aria-label="Message"
                 className="w-full resize-none bg-transparent outline-none text-foreground text-[15px] md:text-base font-light leading-[1.4] tracking-[-0.005em] placeholder:text-transparent py-0 my-auto block"
                 style={{
                   display: "block",

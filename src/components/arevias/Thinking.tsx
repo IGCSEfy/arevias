@@ -1,6 +1,7 @@
 export function ThinkingDots() {
   return (
-    <div className="flex items-center gap-2">
+    <div role="status" aria-live="polite" className="flex items-center gap-2">
+      <span className="sr-only">Arevias is thinking</span>
       {[0, 1, 2].map((i) => (
         <span
           key={i}
