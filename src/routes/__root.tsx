@@ -68,11 +68,11 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" style={{ background: "oklch(0.02 0 0)" }}>
+    <html lang="en" style={{ background: "#000" }}>
       <head>
         <HeadContent />
       </head>
-      <body style={{ background: "oklch(0.02 0 0)", color: "#fff" }}>
+      <body style={{ background: "#000", color: "#fff" }}>
         {children}
         <ConversationPanel />
         <TopNav />
