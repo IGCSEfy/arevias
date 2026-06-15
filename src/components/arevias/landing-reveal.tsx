@@ -7,7 +7,7 @@ import { TextRevealByWord } from "@/components/ui/text-reveal";
  * as the public "purpose of the app" description for the landing page.
  */
 const AREVIAS_BLURB =
-  "Arevias is a conversational AI companion you can talk to naturally — it remembers what matters to you, adapts to how you think, and follows up on its own. Less a tool you operate, more someone who actually gets you.";
+  "Arevias is a conversational AI created by Nanoris. Built around conversation rather than prompts and tasks, it adapts to how you think, remembers what matters, and develops a deeper understanding of you over time. At Nanoris, we’re redefining what AI can be for people by building technology that feels more human, more personal, and more naturally integrated into everyday life.";
 
 export function LandingReveal({
   containerRef,
