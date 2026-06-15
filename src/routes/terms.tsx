@@ -118,10 +118,10 @@ function TermsPage() {
               <p>
                 Questions about these terms? Email us at{" "}
                 <a
-                  href="mailto:support@arevias.com"
+                  href="mailto:contact@arevias.com"
                   className="text-foreground underline underline-offset-4"
                 >
-                  support@arevias.com
+                  contact@arevias.com
                 </a>
                 .
               </p>

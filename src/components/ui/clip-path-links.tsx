@@ -19,7 +19,7 @@ export const ClipPathLinks = () => {
   return (
     <div className="divide-y border divide-border border-border">
       <div className="grid grid-cols-3 divide-x divide-border">
-        <LinkBox Icon={Mail} href="mailto:ceo@igcsefy.com" />
+        <LinkBox Icon={Mail} href="mailto:contact@arevias.com" />
         <LinkBox Icon={SiX} href="https://x.com/AreviasAI" />
         <LinkBox Icon={Instagram} href="https://www.instagram.com/arevias.ai?igsh=MW44bXE1enk1dWdxMw==" />
       </div>

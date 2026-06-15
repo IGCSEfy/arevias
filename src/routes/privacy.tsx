@@ -140,10 +140,10 @@ function PrivacyPage() {
               <p>
                 Questions about your privacy? Email us at{" "}
                 <a
-                  href="mailto:privacy@arevias.com"
+                  href="mailto:contact@arevias.com"
                   className="text-foreground underline underline-offset-4"
                 >
-                  privacy@arevias.com
+                  contact@arevias.com
                 </a>
                 .
               </p>
