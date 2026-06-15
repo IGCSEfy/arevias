@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AmbientLogo } from "@/components/arevias/AmbientLogo";
 import { ChatInput } from "@/components/arevias/ChatInput";
 import { Footer } from "@/components/arevias/footer";
+import { LandingReveal } from "@/components/arevias/landing-reveal";
 import type { ReplyTarget } from "@/components/arevias/ChatInput";
 import { CursorGlow } from "@/components/arevias/CursorGlow";
 import { MessageBlock } from "@/components/arevias/Message";
@@ -180,6 +181,9 @@ export function ChatView({ threadId }: { threadId: string | null }) {
   const [blocked, setBlocked] = useState<LimitReason | null>(null);
   const [loaded, setLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // The hero section is its own scroll container (the document is locked), so
+  // the scroll-reveal below the chat tracks it rather than the window.
+  const heroSectionRef = useRef<HTMLElement>(null);
   const stickToBottom = useRef(true);
   const pendingScrollRaf = useRef<number | null>(null);
   const pendingScrollTimer = useRef<number | null>(null);
@@ -667,6 +671,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
           {empty ? (
             <motion.section
               key="hero"
+              ref={heroSectionRef}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, y: -20, filter: "blur(8px)" }}
@@ -697,6 +702,9 @@ export function ChatView({ threadId }: { threadId: string | null }) {
                     </div>
                   </div>
                 </div>
+                {threadId === null && (
+                  <LandingReveal containerRef={heroSectionRef} />
+                )}
                 {threadId === null && <Footer className="relative z-10" />}
               </div>
             </motion.section>
