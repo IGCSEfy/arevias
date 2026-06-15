@@ -9,12 +9,73 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
+import { Route as AuthResetRouteImport } from './routes/auth/reset'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as ApiDeleteAccountRouteImport } from './routes/api/delete-account'
 import { Route as ApiAreviasRouteImport } from './routes/api/arevias'
+import { Route as ApiAfterthoughtRouteImport } from './routes/api/afterthought'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CThreadIdRoute = CThreadIdRouteImport.update({
+  id: '/c/$threadId',
+  path: '/c/$threadId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetRoute = AuthResetRouteImport.update({
+  id: '/auth/reset',
+  path: '/auth/reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDeleteAccountRoute = ApiDeleteAccountRouteImport.update({
+  id: '/api/delete-account',
+  path: '/api/delete-account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAreviasRoute = ApiAreviasRouteImport.update({
@@ -22,40 +83,199 @@ const ApiAreviasRoute = ApiAreviasRouteImport.update({
   path: '/api/arevias',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAfterthoughtRoute = ApiAfterthoughtRouteImport.update({
+  id: '/api/afterthought',
+  path: '/api/afterthought',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/changelog': typeof ChangelogRoute
+  '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
+  '/terms': typeof TermsRoute
+  '/api/afterthought': typeof ApiAfterthoughtRoute
   '/api/arevias': typeof ApiAreviasRoute
+  '/api/delete-account': typeof ApiDeleteAccountRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/reset': typeof AuthResetRoute
+  '/c/$threadId': typeof CThreadIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/changelog': typeof ChangelogRoute
+  '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
+  '/terms': typeof TermsRoute
+  '/api/afterthought': typeof ApiAfterthoughtRoute
   '/api/arevias': typeof ApiAreviasRoute
+  '/api/delete-account': typeof ApiDeleteAccountRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/reset': typeof AuthResetRoute
+  '/c/$threadId': typeof CThreadIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/changelog': typeof ChangelogRoute
+  '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
+  '/terms': typeof TermsRoute
+  '/api/afterthought': typeof ApiAfterthoughtRoute
   '/api/arevias': typeof ApiAreviasRoute
+  '/api/delete-account': typeof ApiDeleteAccountRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/reset': typeof AuthResetRoute
+  '/c/$threadId': typeof CThreadIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/arevias'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/changelog'
+    | '/login'
+    | '/privacy'
+    | '/profile'
+    | '/terms'
+    | '/api/afterthought'
+    | '/api/arevias'
+    | '/api/delete-account'
+    | '/auth/callback'
+    | '/auth/reset'
+    | '/c/$threadId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/arevias'
-  id: '__root__' | '/' | '/api/arevias'
+  to:
+    | '/'
+    | '/about'
+    | '/changelog'
+    | '/login'
+    | '/privacy'
+    | '/profile'
+    | '/terms'
+    | '/api/afterthought'
+    | '/api/arevias'
+    | '/api/delete-account'
+    | '/auth/callback'
+    | '/auth/reset'
+    | '/c/$threadId'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/changelog'
+    | '/login'
+    | '/privacy'
+    | '/profile'
+    | '/terms'
+    | '/api/afterthought'
+    | '/api/arevias'
+    | '/api/delete-account'
+    | '/auth/callback'
+    | '/auth/reset'
+    | '/c/$threadId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  ChangelogRoute: typeof ChangelogRoute
+  LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
+  ProfileRoute: typeof ProfileRoute
+  TermsRoute: typeof TermsRoute
+  ApiAfterthoughtRoute: typeof ApiAfterthoughtRoute
   ApiAreviasRoute: typeof ApiAreviasRoute
+  ApiDeleteAccountRoute: typeof ApiDeleteAccountRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthResetRoute: typeof AuthResetRoute
+  CThreadIdRoute: typeof CThreadIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$threadId': {
+      id: '/c/$threadId'
+      path: '/c/$threadId'
+      fullPath: '/c/$threadId'
+      preLoaderRoute: typeof CThreadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset': {
+      id: '/auth/reset'
+      path: '/auth/reset'
+      fullPath: '/auth/reset'
+      preLoaderRoute: typeof AuthResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/delete-account': {
+      id: '/api/delete-account'
+      path: '/api/delete-account'
+      fullPath: '/api/delete-account'
+      preLoaderRoute: typeof ApiDeleteAccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/arevias': {
@@ -65,12 +285,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAreviasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/afterthought': {
+      id: '/api/afterthought'
+      path: '/api/afterthought'
+      fullPath: '/api/afterthought'
+      preLoaderRoute: typeof ApiAfterthoughtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  ChangelogRoute: ChangelogRoute,
+  LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
+  ProfileRoute: ProfileRoute,
+  TermsRoute: TermsRoute,
+  ApiAfterthoughtRoute: ApiAfterthoughtRoute,
   ApiAreviasRoute: ApiAreviasRoute,
+  ApiDeleteAccountRoute: ApiDeleteAccountRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthResetRoute: AuthResetRoute,
+  CThreadIdRoute: CThreadIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

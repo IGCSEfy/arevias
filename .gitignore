@@ -2,6 +2,7 @@ node_modules
 dist
 .output
 .nitro
+.vercel
 .vinxi
 .tanstack
 .npm-cache
@@ -14,3 +15,5 @@ node_modules/
 .next/
 .DS_Store
 .playwright-mcp/
+
+.claude

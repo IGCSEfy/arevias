@@ -1,4 +1,4 @@
-import type { AiAdapter } from "./types";
+import type { AfterthoughtDecision, AiAdapter, AiReplyResult } from "./types";
 import type { AiReplyRequest } from "./types";
 
 const aiFragments = [
@@ -28,7 +28,7 @@ const aiFragments = [
 const pick = <T,>(arr: T[], seed: number) => arr[Math.abs(seed) % arr.length];
 
 export class MockAdapter implements AiAdapter {
-  generateReplyParts(input: AiReplyRequest): string[] {
+  async generateReplyParts(input: AiReplyRequest): Promise<AiReplyResult> {
     const message = input.message;
     const hash = message.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
     const mode = hash % 5;
@@ -45,6 +45,11 @@ export class MockAdapter implements AiAdapter {
       parts.push(pick(aiFragments[2], hash + 19));
     }
 
-    return parts;
+    return { parts };
+  }
+
+  async generateAfterthought(): Promise<AfterthoughtDecision | null> {
+    // The mock keeps quiet — afterthoughts are only meaningful with the real model.
+    return null;
   }
 }

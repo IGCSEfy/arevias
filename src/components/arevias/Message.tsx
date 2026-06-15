@@ -9,6 +9,8 @@ export type Message = {
   continuation?: boolean;
   /** Reference to the message this one is replying to. */
   replyTo?: { id: string; role: "user" | "ai"; text: string };
+  /** Epoch ms when the message was sent — powers Arevias's sense of time. */
+  createdAt?: number;
 };
 
 export function MessageBlock({

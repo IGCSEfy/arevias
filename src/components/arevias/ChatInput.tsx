@@ -14,12 +14,15 @@ const placeholders = [
 
 export function ChatInput({
   onSend,
+  onTyping,
   disabled,
   replyTo,
   onCancelReply,
   disableEntranceMotion,
 }: {
   onSend: (text: string) => void;
+  /** Fired when the user starts typing — used to cancel a pending afterthought. */
+  onTyping?: () => void;
   disabled?: boolean;
   replyTo?: ReplyTarget | null;
   onCancelReply?: () => void;
@@ -180,13 +183,16 @@ export function ChatInput({
               <textarea
                 ref={ref}
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value && !value) onTyping?.();
+                  setValue(e.target.value);
+                }}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
                 onKeyDown={onKeyDown}
                 rows={1}
                 aria-label="Message"
-                className="w-full resize-none bg-transparent outline-none text-foreground text-[15px] md:text-base font-light leading-[1.4] tracking-[-0.005em] placeholder:text-transparent py-0 my-auto block"
+                className="w-full resize-none overflow-hidden bg-transparent outline-none text-foreground text-[15px] md:text-base font-light leading-[1.4] tracking-[-0.005em] placeholder:text-transparent py-0 my-auto block"
                 style={{
                   display: "block",
                   fontSize: "var(--arevias-input-font-size)",
