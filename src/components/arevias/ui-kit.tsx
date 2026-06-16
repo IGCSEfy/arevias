@@ -91,12 +91,10 @@ export function Tabs({
   tabs,
   value,
   onChange,
-  layoutId = "profile-tab-pill",
 }: {
   tabs: { id: string; label: string }[];
   value: string;
   onChange: (v: string) => void;
-  layoutId?: string;
 }) {
   const fade = useEdgeFade<HTMLDivElement>();
   return (
@@ -108,26 +106,23 @@ export function Tabs({
     >
       {tabs.map((t) => {
         const active = t.id === value;
+        // Color the active tab directly on the button (background + text on the
+        // same element) rather than overlaying an animated pill. iOS Safari
+        // painted the transformed overlay pill over the label regardless of
+        // z-index; the direct approach (same as the section nav) is reliable.
         return (
           <button
             key={t.id}
             type="button"
             onClick={() => onChange(t.id)}
-            className="relative whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-medium"
-          >
-            {active && (
-              <motion.div
-                layoutId={layoutId}
-                className="absolute inset-0 z-0 rounded-full bg-ink"
-                transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-              />
+            className={cn(
+              "whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-medium transition-colors",
+              active
+                ? "bg-ink text-ink-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
-            {/* z-10: keep the label above the animated pill. iOS Safari paints
-                the transformed layoutId pill over a sibling with `z-index: auto`,
-                which hid the active label (black-on-black). */}
-            <span className={cn("relative z-10", active ? "text-ink-foreground" : "text-muted-foreground")}>
-              {t.label}
-            </span>
+          >
+            {t.label}
           </button>
         );
       })}
