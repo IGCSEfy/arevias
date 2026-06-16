@@ -4,6 +4,21 @@ import { Check, Copy } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// True only on devices with a precise pointer that can hover (desktop). Used to
+// keep the animated slide there while falling back to a simpler, iOS-safe style
+// on touch. Starts false so SSR/first client render match.
+function useHasFineHover() {
+  const [fine, setFine] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => setFine(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return fine;
+}
+
 /* ── Edge fade for horizontally-scrollable rows ───────────────────────────────
  * Returns a ref + inline mask style. The mask softly fades content at an edge
  * only when there's more to scroll in that direction — so a non-overflowing row
@@ -91,12 +106,18 @@ export function Tabs({
   tabs,
   value,
   onChange,
+  layoutId = "profile-tab-pill",
 }: {
   tabs: { id: string; label: string }[];
   value: string;
   onChange: (v: string) => void;
+  layoutId?: string;
 }) {
   const fade = useEdgeFade<HTMLDivElement>();
+  // Desktop keeps the sliding pill. On touch we color the button directly
+  // (background + text on the same element) — iOS Safari painted the
+  // transformed overlay pill over the label regardless of z-index, hiding it.
+  const slide = useHasFineHover();
   return (
     <div
       ref={fade.ref}
@@ -106,23 +127,40 @@ export function Tabs({
     >
       {tabs.map((t) => {
         const active = t.id === value;
-        // Color the active tab directly on the button (background + text on the
-        // same element) rather than overlaying an animated pill. iOS Safari
-        // painted the transformed overlay pill over the label regardless of
-        // z-index; the direct approach (same as the section nav) is reliable.
+        if (!slide) {
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onChange(t.id)}
+              className={cn(
+                "whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-medium transition-colors",
+                active
+                  ? "bg-ink text-ink-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.label}
+            </button>
+          );
+        }
         return (
           <button
             key={t.id}
             type="button"
             onClick={() => onChange(t.id)}
-            className={cn(
-              "whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-medium transition-colors",
-              active
-                ? "bg-ink text-ink-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
+            className="relative whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-medium"
           >
-            {t.label}
+            {active && (
+              <motion.div
+                layoutId={layoutId}
+                className="absolute inset-0 z-0 rounded-full bg-ink"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+              />
+            )}
+            <span className={cn("relative z-10", active ? "text-ink-foreground" : "text-muted-foreground")}>
+              {t.label}
+            </span>
           </button>
         );
       })}
