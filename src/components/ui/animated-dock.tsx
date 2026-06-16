@@ -111,10 +111,18 @@ export const DockItem = ({ mouseX, children, magnify }: DockItemProps) => {
   });
 
   // Touch / no-hover: a plain fixed-size icon, no proximity magnification.
+  // Pin the size with inline px (applies immediately, independent of class /
+  // media-query timing) and flexShrink:0 so the item can never balloon — on
+  // iOS the `w-10` class momentarily dropped during the route transition,
+  // letting the inner flex item expand to fill the bar (the large/centered
+  // flash when opening the profile page).
   if (!magnify) {
     return (
-      <div className="aspect-square w-10 rounded-full bg-primary text-secondary-foreground flex items-center justify-center">
-        <div className="flex items-center justify-center w-full h-full grow">
+      <div
+        style={{ width: 40, height: 40, flexShrink: 0, flexGrow: 0 }}
+        className="aspect-square rounded-full bg-primary text-secondary-foreground flex items-center justify-center"
+      >
+        <div className="flex items-center justify-center w-full h-full">
           {children}
         </div>
       </div>
