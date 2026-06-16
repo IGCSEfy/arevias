@@ -540,7 +540,7 @@ function ProfilePage() {
 
   return (
     <PageTransition dark={false} fast>
-    <div className="arevias-profile fixed inset-0 z-40 w-full overflow-hidden bg-background text-foreground antialiased">
+    <div className="arevias-profile fixed inset-0 z-40 w-full overflow-x-hidden overflow-y-auto lg:overflow-hidden bg-background text-foreground antialiased">
       {/* Floating dark sidebar (desktop) */}
       <aside className="z-30 hidden flex-col rounded-3xl bg-sidebar p-4 text-sidebar-foreground shadow-ink lg:fixed lg:inset-y-3 lg:left-3 lg:flex lg:w-60">
         <div className="flex items-center gap-2.5 px-2 py-2">
@@ -614,7 +614,7 @@ function ProfilePage() {
       </aside>
 
       {/* Scroll area */}
-      <main className="h-full overflow-y-scroll overflow-x-hidden [scrollbar-gutter:stable] lg:pl-[16.5rem]">
+      <main className="[scrollbar-gutter:stable] lg:h-full lg:overflow-x-hidden lg:overflow-y-scroll lg:pl-[16.5rem]">
         {/* Mobile section nav — scrolls with the page, inset rounded bar.
             mt clears the fixed top dock (~80px) with breathing room below it. */}
         <nav className="mt-28 px-3 sm:px-4 lg:hidden">
