@@ -287,9 +287,12 @@ function ProfilePage() {
   }, [session]);
 
   if (loading || !session || profileLoading) {
-    // No loading screen at all — render nothing until auth/profile data is ready,
-    // then the page-transition reveals the profile.
-    return null;
+    // Render a full-viewport surface (not null) while auth/profile data loads.
+    // An empty page made iOS Safari briefly paint at the wrong scale, which
+    // visually ballooned the fixed top-nav dock to mid-screen for a frame
+    // (the DOM was always correct — it was a paint-scale artifact). Filling
+    // the viewport gives iOS stable content to scale against, no flash.
+    return <div className="fixed inset-0 bg-background" aria-hidden />;
   }
 
   const user = session.user;

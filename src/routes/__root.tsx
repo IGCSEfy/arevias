@@ -10,7 +10,6 @@ import {
 import areviasFavicon from "@/assets/arevias-favicon.png";
 import { ConversationPanel } from "@/components/arevias/ConversationPanel";
 import { TopNav } from "@/components/arevias/TopNav";
-import { DockDebug } from "@/components/arevias/DockDebug";
 import "../styles.css";
 
 const AVATAR_COOKIE = "arevias_nav_avatar";
@@ -77,7 +76,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         {children}
         <ConversationPanel />
         <TopNav />
-        <DockDebug />
         <ReducedMotion />
         <Scripts />
       </body>
