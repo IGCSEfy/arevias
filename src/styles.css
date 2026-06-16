@@ -854,12 +854,19 @@
   filter: blur(0px);
 }
 
-/* Quicker reveal, scoped to pages that opt in (the profile console). */
+/* Quicker reveal, scoped to pages that opt in (the profile console).
+   Opacity-only — no transform/filter layer. On iOS the transform+blur layer
+   briefly captured the fixed top-nav dock, flashing it large/centered during
+   the navigation into the profile page. A plain fade avoids that entirely. */
 .arevias-page-transition--fast .arevias-page-content {
-  transition:
-    opacity 0.7s ease 0.08s,
-    transform 0.7s ease 0.08s,
-    filter 0.7s ease 0.08s;
+  transform: none;
+  filter: none;
+  transition: opacity 0.6s ease 0.05s;
+}
+
+.arevias-page-transition--fast.is-loaded .arevias-page-content {
+  transform: none;
+  filter: none;
 }
 
 /* Optional later/slower CTA reveal — tag a primary button with this class. */
