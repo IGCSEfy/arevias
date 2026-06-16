@@ -6,7 +6,6 @@ import { ChatInput } from "@/components/arevias/ChatInput";
 import { Footer } from "@/components/arevias/footer";
 import { LandingReveal } from "@/components/arevias/landing-reveal";
 import type { ReplyTarget } from "@/components/arevias/ChatInput";
-import { CursorGlow } from "@/components/arevias/CursorGlow";
 import { MessageBlock } from "@/components/arevias/Message";
 import type { Message } from "@/components/arevias/Message";
 import { ThinkingDots } from "@/components/arevias/Thinking";
@@ -665,7 +664,6 @@ export function ChatView({ threadId }: { threadId: string | null }) {
   return (
     <div className="arevias-app-shell fixed inset-0 overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 radial-glow" />
-      <CursorGlow />
       <main className="arevias-main relative z-10 flex h-[100dvh] overflow-hidden flex-col">
         <AnimatePresence mode="wait">
           {empty ? (
