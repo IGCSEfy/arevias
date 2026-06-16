@@ -118,11 +118,14 @@ export function Tabs({
             {active && (
               <motion.div
                 layoutId={layoutId}
-                className="absolute inset-0 rounded-full bg-ink"
+                className="absolute inset-0 z-0 rounded-full bg-ink"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
               />
             )}
-            <span className={cn("relative", active ? "text-ink-foreground" : "text-muted-foreground")}>
+            {/* z-10: keep the label above the animated pill. iOS Safari paints
+                the transformed layoutId pill over a sibling with `z-index: auto`,
+                which hid the active label (black-on-black). */}
+            <span className={cn("relative z-10", active ? "text-ink-foreground" : "text-muted-foreground")}>
               {t.label}
             </span>
           </button>
