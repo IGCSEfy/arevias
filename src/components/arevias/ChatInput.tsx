@@ -233,6 +233,9 @@ export function ChatInput({
                   : "var(--arevias-send-empty-bg, color-mix(in oklab, var(--color-foreground) 14%, transparent))",
               }}
               transition={{ duration: 0.4 }}
+              // Keep focus on the textarea so tapping Send doesn't blur it and
+              // dismiss the mobile keyboard mid-conversation.
+              onPointerDown={(e) => e.preventDefault()}
               onClick={submit}
               disabled={!hasValue || disabled}
               aria-label="Send"

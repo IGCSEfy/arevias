@@ -335,8 +335,6 @@ export function ChatView({ threadId }: { threadId: string | null }) {
   }, [messages.length, thinking]);
 
   useEffect(() => {
-    if (empty) return;
-
     const root = document.documentElement;
     const timers = new Set<number>();
 
@@ -387,7 +385,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
 
     const isActiveChatInput = (target: EventTarget | null) =>
       target instanceof HTMLTextAreaElement &&
-      Boolean(target.closest(".arevias-input-dock"));
+      Boolean(target.closest("[data-arevias-chat-input]"));
 
     const handleFocusIn = (event: FocusEvent) => {
       if (!isActiveChatInput(event.target)) return;
@@ -433,7 +431,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
       delete root.dataset.areviasChatInputFocus;
       clearKeyboardLayout();
     };
-  }, [empty]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -679,7 +677,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
               }`}
             >
               <div className="flex flex-col">
-                <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-6">
+                <div className="arevias-hero-stage relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-6">
                   <div aria-hidden className="arevias-intro-blob-field">
                     <div className="arevias-intro-blob arevias-intro-blob-1" />
                     <div className="arevias-intro-blob arevias-intro-blob-2" />

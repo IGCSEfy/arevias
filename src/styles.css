@@ -495,6 +495,21 @@
       inset: -8%;
     }
 
+    /* Keyboard open on the landing hero: collapse the centered stage to the
+       visible area above the keyboard and anchor the composition to the bottom,
+       so the input sits just above the keyboard (logo above it) instead of the
+       browser scrolling everything off into a black void. */
+    :root[data-arevias-chat-input-focus="true"] .arevias-hero-stage {
+      min-height: var(--arevias-visual-height, 100dvh);
+      height: var(--arevias-visual-height, 100dvh);
+      align-items: flex-end;
+      padding-bottom: 0.85rem;
+    }
+
+    :root[data-arevias-chat-input-focus="true"] .arevias-hero-composition {
+      transform: none;
+    }
+
     .arevias-conversation {
       width: 100vw;
       max-width: 100vw;
