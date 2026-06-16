@@ -359,6 +359,15 @@ export function ChatView({ threadId }: { threadId: string | null }) {
         "--arevias-input-dock-space",
         `${Math.ceil(dockHeight + 28)}px`,
       );
+
+      // iOS scrolls the layout viewport to bring a focused input into view.
+      // With our fixed-body layout that shoves all the fixed content (the
+      // messages) up out of the visible area, leaving an empty band until the
+      // user manually scrolls. Keep the window pinned at the top so the fixed
+      // content stays aligned with what's actually visible.
+      if (window.scrollY !== 0 || window.pageYOffset !== 0) {
+        window.scrollTo(0, 0);
+      }
     };
 
     const clearKeyboardLayout = () => {
