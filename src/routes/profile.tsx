@@ -6,7 +6,7 @@ import {
   type ComponentType,
   type ReactNode,
 } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Accessibility,
   Activity,
@@ -650,13 +650,15 @@ function ProfilePage() {
           <PageHeader title={current.label} subtitle={current.desc} />
           <Tabs tabs={current.tabs} value={tab} onChange={setTab} />
 
-          <AnimatePresence mode="wait">
+            {/* Keyed on section/tab: switching unmounts the old content
+                instantly (no lingering ghost of the previous cards) and the
+                new content animates in. No AnimatePresence/exit — the
+                wait-for-exit caused the old cards to hang visible mid-switch. */}
             <motion.div
               key={`${section}/${tab}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             >
               {/* ─────────────── OVERVIEW ─────────────── */}
               {section === "overview" && tab === "dashboard" && (
@@ -1378,7 +1380,6 @@ function ProfilePage() {
                 </div>
               )}
             </motion.div>
-          </AnimatePresence>
         </div>
       </main>
     </div>
