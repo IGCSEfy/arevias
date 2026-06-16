@@ -112,7 +112,14 @@ const navItems: DockItemData[] = [
 
 export function TopNav() {
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4">
+    <div
+      className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4"
+      // iOS Safari can mis-position a `position: fixed` element to mid-screen
+      // when another part of the page (the profile console's nested scroll +
+      // async-gated render) forces a recomposite. Promoting the dock to its own
+      // compositing layer pins it to the viewport. Desktop is unaffected.
+      style={{ transform: "translateZ(0)" }}
+    >
       {/*
         - pointer-events-auto: re-enable interaction on the dock itself (wrapper
           stays pass-through so the rest of the page remains clickable).
