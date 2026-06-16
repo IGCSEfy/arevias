@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   MotionValue,
@@ -24,13 +24,30 @@ export interface DockItemData {
   target?: string;
 }
 
+// The cursor-proximity magnify only makes sense with a fine pointer that can
+// hover. On touch devices `onMouseMove` can latch `mouseX` to a tap position
+// with no `onMouseLeave` to release it, leaving icons stuck enlarged — so we
+// disable magnification entirely there and render fixed-size items.
+function useHasFineHover() {
+  const [fineHover, setFineHover] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => setFineHover(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return fineHover;
+}
+
 export const AnimatedDock = ({ className, items }: AnimatedDockProps) => {
   const mouseX = useMotionValue(Infinity);
+  const magnify = useHasFineHover();
 
   return (
     <motion.div
-      onMouseMove={(e) => mouseX.set(e.pageX)}
-      onMouseLeave={() => mouseX.set(Infinity)}
+      onMouseMove={magnify ? (e) => mouseX.set(e.pageX) : undefined}
+      onMouseLeave={magnify ? () => mouseX.set(Infinity) : undefined}
       className={cn(
         "mx-auto flex h-16 items-end gap-4 rounded-2xl bg-secondary/50 border border-primary/10 shadow-md px-4 pb-3",
         className,
@@ -40,7 +57,7 @@ export const AnimatedDock = ({ className, items }: AnimatedDockProps) => {
         const linkClass =
           "grow flex items-center justify-center w-full h-full text-primary-foreground";
         return (
-          <DockItem key={index} mouseX={mouseX}>
+          <DockItem key={index} mouseX={mouseX} magnify={magnify}>
             {item.target ? (
               // External / new-tab links keep a plain anchor.
               <a
@@ -68,9 +85,10 @@ export const AnimatedDock = ({ className, items }: AnimatedDockProps) => {
 interface DockItemProps {
   mouseX: MotionValue<number>;
   children: React.ReactNode;
+  magnify: boolean;
 }
 
-export const DockItem = ({ mouseX, children }: DockItemProps) => {
+export const DockItem = ({ mouseX, children, magnify }: DockItemProps) => {
   const ref = useRef<HTMLDivElement>(null);
 
   const distance = useTransform(mouseX, (val) => {
@@ -91,6 +109,17 @@ export const DockItem = ({ mouseX, children }: DockItemProps) => {
     stiffness: 150,
     damping: 12,
   });
+
+  // Touch / no-hover: a plain fixed-size icon, no proximity magnification.
+  if (!magnify) {
+    return (
+      <div className="aspect-square w-10 rounded-full bg-primary text-secondary-foreground flex items-center justify-center">
+        <div className="flex items-center justify-center w-full h-full grow">
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
