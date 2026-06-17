@@ -14,7 +14,7 @@ export function Footer({ className }: { className?: string }) {
           <Link to="/privacy" className="transition-colors hover:text-foreground">
             Privacy Policy
           </Link>
-          <span className="mx-2 opacity-50">·</span>
+          <span className="mx-2 text-foreground/70">·</span>
           <Link to="/terms" className="transition-colors hover:text-foreground">
             Terms of Use
           </Link>
