@@ -687,11 +687,6 @@ export function ChatView({ threadId }: { threadId: string | null }) {
             >
               <div className="flex flex-col">
                 <div className="arevias-hero-stage relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-6">
-                  <div aria-hidden className="arevias-intro-blob-field">
-                    <div className="arevias-intro-blob arevias-intro-blob-1" />
-                    <div className="arevias-intro-blob arevias-intro-blob-2" />
-                    <div className="arevias-intro-blob arevias-intro-blob-3" />
-                  </div>
                   <div aria-hidden className="arevias-hero-depth" />
                   <div aria-hidden className="arevias-hero-vignette" />
                   <div className="arevias-hero-composition relative z-10 w-full mx-auto">
