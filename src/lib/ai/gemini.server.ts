@@ -19,6 +19,11 @@ const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 250;
 const MODEL_RATE_LIMIT_COOLDOWN_MS = 60_000;
 const MODEL_RATE_LIMIT_MAX_COOLDOWN_MS = 10 * 60_000;
+// When every model is momentarily rate-limited, we'll wait out a cooldown and
+// retry — but only within this budget, so a reply still lands within a sane
+// "thinking" window. (Keep below the serverless function timeout; the final
+// model fetch runs after any wait.)
+const REPLY_WAIT_BUDGET_MS = 7_000;
 
 const SYSTEM_INSTRUCTION = [
   "You are Arevias.",
@@ -93,8 +98,13 @@ class GeminiModelUnavailableError extends Error {
   name = "GeminiModelUnavailableError";
 }
 
+/** Optional shaping of a normal reply. `signOff` folds a graceful in-character
+ * wrap-up into the reply (used on the user's last allowed message). */
+export type ReplyOptions = { signOff?: "signup" | "signoff" };
+
 export async function generateAreviasReply(
   input: AiReplyRequest,
+  options: ReplyOptions = {},
 ): Promise<string> {
   const message = clean(input.message, 1_200);
   if (!message) {
@@ -109,29 +119,61 @@ export async function generateAreviasReply(
   let rateLimitError: GeminiRateLimitError | null = null;
   let modelUnavailableError: GeminiModelUnavailableError | null = null;
 
-  for (const model of GEMINI_MODELS) {
-    const cooldownMs = getModelRateLimitCooldown(model);
-    if (cooldownMs > 0) {
-      rateLimitError ??= new GeminiRateLimitError(cooldownMs);
-      continue;
-    }
+  // Hold-and-retry: if every model is momentarily rate-limited, wait out the
+  // soonest cooldown (only when it lands within our budget) and try again — so
+  // the user gets a real reply after a slightly longer "thinking" pause instead
+  // of canned filler. We never freeze for a cooldown we can't outlast: if no
+  // model recovers in time, we give up immediately and let the route fall back.
+  const deadline = Date.now() + REPLY_WAIT_BUDGET_MS;
 
-    try {
-      return await requestGeminiWithRetry(input, message, apiKey, model);
-    } catch (error) {
-      if (error instanceof GeminiRateLimitError) {
-        rateLimitError = error;
-        setModelRateLimitCooldown(model, error.retryAfterMs);
+  for (;;) {
+    let soonestCooldownMs = Number.POSITIVE_INFINITY;
+    let sawRateLimit = false;
+
+    for (const model of GEMINI_MODELS) {
+      const cooldownMs = getModelRateLimitCooldown(model);
+      if (cooldownMs > 0) {
+        sawRateLimit = true;
+        soonestCooldownMs = Math.min(soonestCooldownMs, cooldownMs);
+        rateLimitError ??= new GeminiRateLimitError(cooldownMs);
         continue;
       }
 
-      if (error instanceof GeminiModelUnavailableError) {
-        modelUnavailableError = error;
-        continue;
-      }
+      try {
+        return await requestGeminiWithRetry(input, message, apiKey, model, options);
+      } catch (error) {
+        if (error instanceof GeminiRateLimitError) {
+          sawRateLimit = true;
+          rateLimitError = error;
+          setModelRateLimitCooldown(model, error.retryAfterMs);
+          soonestCooldownMs = Math.min(
+            soonestCooldownMs,
+            getModelRateLimitCooldown(model),
+          );
+          continue;
+        }
 
-      throw error;
+        if (error instanceof GeminiModelUnavailableError) {
+          modelUnavailableError = error;
+          continue;
+        }
+
+        throw error;
+      }
     }
+
+    const remainingMs = deadline - Date.now();
+    if (
+      !sawRateLimit ||
+      !Number.isFinite(soonestCooldownMs) ||
+      soonestCooldownMs >= remainingMs ||
+      remainingMs <= 250
+    ) {
+      break;
+    }
+
+    // Wait just until the soonest model frees up, then retry the pass.
+    await wait(Math.min(soonestCooldownMs, remainingMs));
   }
 
   throw (
@@ -271,6 +313,16 @@ function parseAfterthought(raw: string): AfterthoughtDecision | null {
 // In-character message sent when a user hits their daily cap — a log-in nudge
 // for anonymous users, a natural sign-off for signed-in ones. Generated through
 // the normal persona + style pipeline so it sounds like the user's own voice.
+// Folded into a NORMAL reply on the user's last allowed message: answer them
+// for real, then wind down in the same breath. Unlike LIMIT_DIRECTIVE, this is
+// not a standalone notice — it's a real reply that happens to close things out.
+const NEARING_LIMIT_DIRECTIVE: Record<"signup" | "signoff", string> = {
+  signup:
+    "IMPORTANT — this is the last message you can exchange with this user for now (they aren't signed in). First reply naturally to what they just said, then in the SAME message smoothly wind down and warmly invite them to sign in or make an account so the two of you can keep talking. Stay fully in your own voice and matched to how this user writes. Do NOT mention rate limits, quotas, message caps, or any technical reason — just a natural, human wrap-up.",
+  signoff:
+    "IMPORTANT — this is the last message you can exchange with this user for now. First reply naturally to what they just said, then in the SAME message smoothly wind down with a casual sign-off, like you've gotta head off but you'll talk again later. Stay fully in your own voice and matched to how this user writes. Do NOT mention rate limits, quotas, message caps, or any technical reason — just a natural, human wrap-up.",
+};
+
 const LIMIT_DIRECTIVE: Record<"signup" | "signoff", string> = {
   signup:
     "WRAP-UP TASK — you are no longer answering normally. The conversation has to pause here because the user isn't signed in. In your own voice, matched to exactly how this user writes and your persona, send ONE short message that warmly nudges them to log in or make an account so the two of you can keep talking. Sound like you genuinely want to keep going. Do NOT mention rate limits, quotas, caps, or any technical reason. No preamble — just the message.",
@@ -376,10 +428,11 @@ async function requestGeminiWithRetry(
   message: string,
   apiKey: string,
   model: string,
+  options: ReplyOptions = {},
 ) {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
-      return await requestGemini(input, message, apiKey, model);
+      return await requestGemini(input, message, apiKey, model, options);
     } catch (error) {
       if (error instanceof GeminiRateLimitError) {
         throw error;
@@ -402,6 +455,7 @@ async function requestGemini(
   message: string,
   apiKey: string,
   model: string,
+  options: ReplyOptions = {},
 ) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -413,7 +467,7 @@ async function requestGemini(
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey,
       },
-      body: JSON.stringify(buildGeminiRequest(input, message)),
+      body: JSON.stringify(buildGeminiRequest(input, message, options)),
       signal: controller.signal,
     });
 
@@ -773,11 +827,19 @@ function collectUserMessages(input: AiReplyRequest, message: string): string[] {
   return [...fromHistory, message].slice(-12);
 }
 
-function buildGeminiRequest(input: AiReplyRequest, message: string) {
+function buildGeminiRequest(
+  input: AiReplyRequest,
+  message: string,
+  options: ReplyOptions = {},
+) {
   const styleSummary = summarizeUserStyle(collectUserMessages(input, message), input.personalization);
+  let systemText = buildSystemInstruction(input.personalization, styleSummary, input.timeContext);
+  if (options.signOff) {
+    systemText += `\n\n${NEARING_LIMIT_DIRECTIVE[options.signOff]}`;
+  }
   return {
     systemInstruction: {
-      parts: [{ text: buildSystemInstruction(input.personalization, styleSummary, input.timeContext) }],
+      parts: [{ text: systemText }],
     },
     contents: [
       ...toHistoryContents(input.history),
@@ -788,7 +850,8 @@ function buildGeminiRequest(input: AiReplyRequest, message: string) {
     ],
     generationConfig: {
       temperature: 0.6,
-      maxOutputTokens: 80,
+      // A sign-off reply answers AND wraps up, so give it a little more room.
+      maxOutputTokens: options.signOff ? 130 : 80,
       responseMimeType: "text/plain",
       thinkingConfig: {
         thinkingBudget: 0,

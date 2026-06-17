@@ -23,20 +23,11 @@ export const Route = createFileRoute("/api/arevias")({
         const who = await identifyRequester(request);
         const limit = limitFor(who.loggedIn);
         const count = await countUsage(who.id);
+        const reason: LimitReason = who.loggedIn ? "signoff" : "signup";
 
+        // Past the cap — the graceful sign-off already went out on the last
+        // allowed message, so just soft-close without burning more quota.
         if (count > limit) {
-          const reason: LimitReason = who.loggedIn ? "signoff" : "signup";
-          // Generate the in-character message once (right as they cross the
-          // cap); further attempts get a static line so we don't burn quota.
-          if (count === limit + 1) {
-            try {
-              const { generateLimitMessage } = await import("@/lib/ai/gemini.server");
-              const text = await generateLimitMessage(body, reason);
-              return json({ text, limited: true, reason });
-            } catch {
-              return json({ text: STATIC_LIMIT[reason], limited: true, reason });
-            }
-          }
           return json({ text: STATIC_LIMIT[reason], limited: true, reason });
         }
 
@@ -44,9 +35,16 @@ export const Route = createFileRoute("/api/arevias")({
           const { generateAreviasReply } = await import(
             "@/lib/ai/gemini.server"
           );
-          const text = await generateAreviasReply(body);
+          // On the LAST allowed message, fold an in-character sign-off into the
+          // real reply (it answers them AND wraps up) instead of sending a
+          // separate "you've hit your limit" notice afterward.
+          const signingOff = count === limit;
+          const text = await generateAreviasReply(
+            body,
+            signingOff ? { signOff: reason } : {},
+          );
 
-          return json({ text });
+          return json(signingOff ? { text, limited: true, reason } : { text });
         } catch (error) {
           return json({
             text: isRateLimit(error)
