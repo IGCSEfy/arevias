@@ -7,10 +7,10 @@ export function Footer({ className }: { className?: string }) {
   return (
     <footer className={cn("px-6", className)}>
       <div className="mx-auto max-w-5xl border-t border-foreground/10 pt-8 pb-12 text-center sm:pt-10 sm:pb-16">
-        <p className="font-mono text-sm tracking-[0.25em] text-muted-foreground">
+        <p className="font-sans text-sm tracking-[0.1em] text-muted-foreground">
           © {new Date().getFullYear()} Nanoris
         </p>
-        <p className="mt-3 font-mono text-xs tracking-wide text-muted-foreground/80">
+        <p className="mt-3 font-sans text-xs tracking-wide text-muted-foreground/80">
           <Link to="/privacy" className="transition-colors hover:text-foreground">
             Privacy Policy
           </Link>
