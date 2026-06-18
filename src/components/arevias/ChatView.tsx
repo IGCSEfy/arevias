@@ -376,20 +376,18 @@ export function ChatView({ threadId }: { threadId: string | null }) {
       root.style.removeProperty("--arevias-input-dock-space");
     };
 
-    const queueScroll = () => {
-      updateKeyboardLayout();
-      stickToBottom.current = true;
-      scheduleScroll(true);
+    // Instant snap to the bottom — no eased animation. The keyboard handler
+    // runs this repeatedly as the keyboard animates open; competing eased
+    // scrolls were what made it stutter. Respects a user who scrolled up.
+    const snapToBottom = () => {
+      const el = scrollRef.current;
+      if (!el || !stickToBottom.current) return;
+      el.scrollTop = el.scrollHeight;
+    };
 
-      for (const delay of [120, 320, 620]) {
-        const timer = window.setTimeout(() => {
-          timers.delete(timer);
-          updateKeyboardLayout();
-          stickToBottom.current = true;
-          scheduleScroll(true);
-        }, delay);
-        timers.add(timer);
-      }
+    const settle = () => {
+      updateKeyboardLayout();
+      snapToBottom();
     };
 
     const isActiveChatInput = (target: EventTarget | null) =>
@@ -399,8 +397,16 @@ export function ChatView({ threadId }: { threadId: string | null }) {
     const handleFocusIn = (event: FocusEvent) => {
       if (!isActiveChatInput(event.target)) return;
       root.dataset.areviasChatInputFocus = "true";
-      updateKeyboardLayout();
-      queueScroll();
+      stickToBottom.current = true;
+      settle();
+      // Re-settle across the keyboard's open animation + layout settling.
+      for (const delay of [60, 160, 320, 520]) {
+        const timer = window.setTimeout(() => {
+          timers.delete(timer);
+          settle();
+        }, delay);
+        timers.add(timer);
+      }
     };
 
     const handleFocusOut = (event: FocusEvent) => {
@@ -416,8 +422,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
 
     const handleViewportChange = () => {
       if (root.dataset.areviasChatInputFocus === "true") {
-        updateKeyboardLayout();
-        queueScroll();
+        settle();
       }
     };
 

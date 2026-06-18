@@ -54,6 +54,10 @@ export function ChatInput({
     if (!t || disabled) return;
     onSend(t);
     setValue("");
+    // Keep the mobile keyboard up: re-assert focus on the textarea within the
+    // same tap gesture. The Send button's preventDefault stops the focus steal,
+    // but this is the reliable backstop so sending never dismisses the keyboard.
+    ref.current?.focus();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
