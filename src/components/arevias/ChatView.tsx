@@ -675,7 +675,6 @@ export function ChatView({ threadId }: { threadId: string | null }) {
 
   return (
     <div className="arevias-app-shell fixed inset-0 overflow-hidden bg-background text-foreground">
-      <div className="pointer-events-none absolute inset-0 radial-glow" />
       <main className="arevias-main relative z-10 flex h-[100dvh] overflow-hidden flex-col">
         <AnimatePresence mode="wait">
           {empty ? (
@@ -692,7 +691,6 @@ export function ChatView({ threadId }: { threadId: string | null }) {
             >
               <div className="flex flex-col">
                 <div className="arevias-hero-stage relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-6">
-                  <div aria-hidden className="arevias-hero-vignette" />
                   <div className="arevias-hero-composition relative z-10 w-full mx-auto">
                     <div className="arevias-intro-headline arevias-hero-logo-frame pointer-events-none">
                       <AmbientLogo width={540} />
