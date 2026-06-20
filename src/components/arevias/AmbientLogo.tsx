@@ -9,7 +9,6 @@ export function AmbientLogo({
 }) {
   return (
     <div
-      aria-hidden
       className="pointer-events-none relative"
       style={{
         width: `min(76vw, ${width}px)`,
@@ -18,7 +17,7 @@ export function AmbientLogo({
     >
       <img
         src={logo}
-        alt=""
+        alt="Arevias"
         draggable={false}
         style={{
           width: "100%",

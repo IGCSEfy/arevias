@@ -701,6 +701,13 @@ export function ChatView({ threadId }: { threadId: string | null }) {
                         onTyping={() => cancelAfterthoughts(true)}
                         disableEntranceMotion
                       />
+                      {/* Visible, above-the-fold statement of the app name +
+                          purpose — names "Arevias" (matches the OAuth consent
+                          screen) and explains what it is, for Google's homepage
+                          verification. */}
+                      <p className="mt-5 text-center text-xs font-light tracking-wide text-muted-foreground/55">
+                        Arevias — a conversational AI by Nanoris
+                      </p>
                     </div>
                   </div>
                 </div>
