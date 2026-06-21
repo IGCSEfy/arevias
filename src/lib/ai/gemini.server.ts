@@ -931,3 +931,135 @@ function clean(text: string, maxLength: number) {
     .trim()
     .slice(0, maxLength);
 }
+
+/* ── Reply AS the account owner (Instagram DM auto-reply) ──────────────────────
+ * Unlike generateAreviasReply (Arevias mirroring whoever it talks to), this
+ * writes a reply in the *owner's* own voice — built from their Arevias profile
+ * preferences, their custom instructions, and learned from their own past
+ * replies in the thread. The DM sender's messages are context to respond to,
+ * not a style to copy. Default behaviour is to mirror the owner naturally. */
+
+export type OwnerReplyInput = {
+  message: string;
+  /** Prior thread with this sender: "in" = from the sender, "out" = owner's reply. */
+  history?: { role: "in" | "out"; text: string }[];
+  preferences?: AiPersonalization | null;
+  customInstructions?: string;
+};
+
+export async function generateAsUserReply(input: OwnerReplyInput): Promise<string> {
+  const message = clean(input.message, 1_200);
+  if (!message) throw new Error("Missing message");
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini unavailable");
+
+  // Gemini wants the contents to begin with a user turn — trim any leading
+  // owner ("out") turns so the thread starts from the sender.
+  let history = input.history ?? [];
+  const firstIn = history.findIndex((h) => h.role === "in");
+  history = firstIn >= 0 ? history.slice(firstIn) : [];
+
+  const ownReplies = history.filter((h) => h.role === "out").map((h) => h.text);
+  const styleSummary = summarizeUserStyle(ownReplies, input.preferences);
+  const burst = shouldBurst(input.preferences);
+
+  const systemText = buildOwnerInstruction(
+    input.preferences ?? null,
+    input.customInstructions,
+    styleSummary,
+    burst,
+  );
+
+  const body = {
+    systemInstruction: { parts: [{ text: systemText }] },
+    contents: [
+      ...history.map((h) => ({
+        role: h.role === "out" ? "model" : "user",
+        parts: [{ text: clean(h.text, 1_200) }],
+      })),
+      { role: "user", parts: [{ text: message }] },
+    ],
+    generationConfig: {
+      temperature: 0.75,
+      maxOutputTokens: 200,
+      responseMimeType: "text/plain",
+      thinkingConfig: { thinkingBudget: 0 },
+    },
+    safetySettings: [{ category: "HARM_CATEGORY_HARASSMENT", threshold: "OFF" }],
+  };
+
+  let rateLimitError: GeminiRateLimitError | null = null;
+  let otherError: Error | null = null;
+
+  for (const model of GEMINI_MODELS) {
+    if (getModelRateLimitCooldown(model) > 0) {
+      rateLimitError ??= new GeminiRateLimitError();
+      continue;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(getGeminiEndpoint(model), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        if (res.status === 429) {
+          setModelRateLimitCooldown(model, await parseRetryDelay(res));
+          rateLimitError = new GeminiRateLimitError();
+          continue;
+        }
+        otherError = new Error(`Gemini ${res.status}`);
+        continue;
+      }
+      const text = extractText((await res.json()) as GeminiResponse);
+      if (text) return normalizeReply(text);
+      otherError = new Error("Gemini empty reply");
+      continue;
+    } catch (err) {
+      otherError = err as Error;
+      continue;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  throw rateLimitError ?? otherError ?? new Error("Gemini request failed");
+}
+
+function buildOwnerInstruction(
+  p: AiPersonalization | null,
+  customInstructions: string | undefined,
+  styleSummary: string,
+  burst: boolean,
+): string {
+  const sections: string[] = [
+    [
+      "You are the owner of this Instagram account, replying to a direct message yourself.",
+      "This is YOU texting a real person back — not an AI, not an assistant, and never 'Arevias'. Never say you're an AI or a bot, and never mention Arevias.",
+      "Write exactly how you naturally text: your own voice, tone, message length, capitalization, punctuation, slang, and emoji habits.",
+      "By default, mirror your own natural style — the 'model' turns in this conversation are your own past replies; match how they're written.",
+      "Don't be a generic, overly-helpful assistant. Just reply like the real you would.",
+    ].join("\n"),
+  ];
+
+  if (styleSummary) sections.push(`How you write:\n${styleSummary}`);
+
+  const prefs = p ? buildPersonalizationInstruction(p) : "";
+  if (prefs) {
+    sections.push(
+      `The settings below describe YOU — your personality and how you write. Apply them to yourself:\n${prefs}`,
+    );
+  }
+
+  const ci = customInstructions ? clean(customInstructions, 600) : "";
+  if (ci) sections.push(`Your own instructions for how to handle DMs: ${ci}`);
+
+  if (burst) sections.push(BURST_DIRECTIVE);
+
+  sections.push("Reply with only the message text — nothing else.");
+  return sections.join("\n\n");
+}
