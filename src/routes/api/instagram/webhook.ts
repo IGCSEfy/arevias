@@ -54,13 +54,22 @@ export const Route = createFileRoute("/api/instagram/webhook")({
           }
         }
 
-        // Phase 1: acknowledge fast (Meta retries if it doesn't get a prompt
-        // 200). Message routing + the in-voice AI reply come in a later phase.
+        // Parse, then generate + send the reply before acking. Gemini (~2-5s)
+        // + send (~1s) stays well under Meta's webhook timeout, and on
+        // serverless we can't reliably do work after responding. Always 200 so
+        // Meta doesn't retry (errors are logged inside the handler).
+        let payload: unknown;
         try {
-          const payload = JSON.parse(raw);
-          console.log("[instagram webhook]", JSON.stringify(payload));
+          payload = JSON.parse(raw);
         } catch {
-          /* ignore non-JSON pings */
+          return new Response("EVENT_RECEIVED", { status: 200 });
+        }
+
+        try {
+          const { handleInstagramEvent } = await import("@/lib/instagram.server");
+          await handleInstagramEvent(payload);
+        } catch (err) {
+          console.error("[instagram webhook] handler error", err);
         }
 
         return new Response("EVENT_RECEIVED", { status: 200 });
