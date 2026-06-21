@@ -22,6 +22,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as ApiDeleteAccountRouteImport } from './routes/api/delete-account'
 import { Route as ApiAreviasRouteImport } from './routes/api/arevias'
 import { Route as ApiAfterthoughtRouteImport } from './routes/api/afterthought'
+import { Route as ApiInstagramWebhookRouteImport } from './routes/api/instagram/webhook'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -88,6 +89,11 @@ const ApiAfterthoughtRoute = ApiAfterthoughtRouteImport.update({
   path: '/api/afterthought',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInstagramWebhookRoute = ApiInstagramWebhookRouteImport.update({
+  id: '/api/instagram/webhook',
+  path: '/api/instagram/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/reset': typeof AuthResetRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/api/instagram/webhook': typeof ApiInstagramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/reset': typeof AuthResetRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/api/instagram/webhook': typeof ApiInstagramWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/reset': typeof AuthResetRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/api/instagram/webhook': typeof ApiInstagramWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/reset'
     | '/c/$threadId'
+    | '/api/instagram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/reset'
     | '/c/$threadId'
+    | '/api/instagram/webhook'
   id:
     | '__root__'
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/reset'
     | '/c/$threadId'
+    | '/api/instagram/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthResetRoute: typeof AuthResetRoute
   CThreadIdRoute: typeof CThreadIdRoute
+  ApiInstagramWebhookRoute: typeof ApiInstagramWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAfterthoughtRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/instagram/webhook': {
+      id: '/api/instagram/webhook'
+      path: '/api/instagram/webhook'
+      fullPath: '/api/instagram/webhook'
+      preLoaderRoute: typeof ApiInstagramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   AuthResetRoute: AuthResetRoute,
   CThreadIdRoute: CThreadIdRoute,
+  ApiInstagramWebhookRoute: ApiInstagramWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
