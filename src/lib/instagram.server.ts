@@ -70,7 +70,7 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
   // Which Arevias account owns this IG account?
   const { data: conn } = await sb
     .from("instagram_connections")
-    .select("user_id, access_token, enabled, custom_instructions")
+    .select("user_id, access_token, enabled, custom_instructions, use_personalization")
     .eq("ig_account_id", accountId)
     .maybeSingle();
 
@@ -82,13 +82,19 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
     return;
   }
 
-  // The owner's personalization (how they write / who they are).
-  const { data: profile } = await sb
-    .from("profiles")
-    .select("preferences")
-    .eq("id", conn.user_id)
-    .maybeSingle();
-  const preferences = (profile?.preferences ?? null) as AiPersonalization | null;
+  // Apply the owner's Arevias personalization only when the connection opts in
+  // (set when they properly connect their account). Until then, neutral
+  // defaults — reply naturally and mirror, without their personal-chat
+  // personality/style bleeding into DM replies.
+  let preferences: AiPersonalization | null = null;
+  if (conn.use_personalization) {
+    const { data: profile } = await sb
+      .from("profiles")
+      .select("preferences")
+      .eq("id", conn.user_id)
+      .maybeSingle();
+    preferences = (profile?.preferences ?? null) as AiPersonalization | null;
+  }
 
   // Recent thread history with this sender (oldest → newest).
   const { data: rows } = await sb
