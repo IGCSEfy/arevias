@@ -107,6 +107,10 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
     .from("instagram_messages")
     .insert({ ig_account_id: accountId, sender_id: senderId, role: "in", text });
 
+  // Who is this? Pull their username + display name so the reply addresses them
+  // naturally (real name over handle, recognize nicknames, etc.).
+  const identity = await fetchSenderIdentity(senderId, token);
+
   // Generate the reply in the owner's voice.
   const { generateAsUserReply } = await import("@/lib/ai/gemini.server");
   const reply = await generateAsUserReply({
@@ -114,6 +118,8 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
     history,
     preferences,
     customInstructions: conn.custom_instructions || undefined,
+    senderUsername: identity.username,
+    senderName: identity.name,
   });
 
   // Split into bursts (double-texting) on line breaks; send each as its own DM
@@ -137,6 +143,28 @@ function splitBursts(text: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
   return parts.length ? parts.slice(0, 3) : [text.trim()];
+}
+
+/** Look up a sender's display name + @username from their Instagram-scoped ID. */
+async function fetchSenderIdentity(
+  igsid: string,
+  token: string,
+): Promise<{ username?: string; name?: string }> {
+  try {
+    const res = await fetch(`${IG_GRAPH}/${igsid}?fields=name,username`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.warn("[instagram] identity lookup failed", res.status, detail);
+      return {};
+    }
+    const data = (await res.json()) as { name?: string; username?: string };
+    return { username: data.username, name: data.name };
+  } catch (err) {
+    console.warn("[instagram] identity lookup error", err);
+    return {};
+  }
 }
 
 async function sendInstagramMessage(

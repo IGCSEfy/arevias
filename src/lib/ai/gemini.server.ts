@@ -945,6 +945,9 @@ export type OwnerReplyInput = {
   history?: { role: "in" | "out"; text: string }[];
   preferences?: AiPersonalization | null;
   customInstructions?: string;
+  /** Identity cues for the person being replied to, so Arevias addresses them naturally. */
+  senderUsername?: string;
+  senderName?: string;
 };
 
 export async function generateAsUserReply(input: OwnerReplyInput): Promise<string> {
@@ -969,6 +972,8 @@ export async function generateAsUserReply(input: OwnerReplyInput): Promise<strin
     input.customInstructions,
     styleSummary,
     burst,
+    input.senderUsername,
+    input.senderName,
   );
 
   const body = {
@@ -1035,6 +1040,8 @@ function buildOwnerInstruction(
   customInstructions: string | undefined,
   styleSummary: string,
   burst: boolean,
+  senderUsername?: string,
+  senderName?: string,
 ): string {
   const sections: string[] = [
     [
@@ -1045,6 +1052,8 @@ function buildOwnerInstruction(
       "Don't be a generic, overly-helpful assistant. Just reply like the real you would.",
     ].join("\n"),
   ];
+
+  sections.push(buildIdentitySection(senderUsername, senderName));
 
   if (styleSummary) sections.push(`How you write:\n${styleSummary}`);
 
@@ -1062,4 +1071,36 @@ function buildOwnerInstruction(
 
   sections.push("Reply with only the message text — nothing else.");
   return sections.join("\n\n");
+}
+
+/**
+ * Intelligent identity understanding: hand the model the sender's username +
+ * display name and let it work out the most natural way to address them —
+ * prefer a real name, recognize nicknames, acknowledge funny contrasts, and
+ * never invent a name that isn't supported by the cues.
+ */
+function buildIdentitySection(username?: string, name?: string): string {
+  const u = username ? clean(username, 100) : "";
+  const n = name ? clean(name, 100) : "";
+
+  if (!u && !n) {
+    return "You don't know this person's name. Do not invent or assume one — just reply naturally without forcing a name.";
+  }
+
+  const lines = [
+    "Who you're talking to — interpret these cues, don't just parrot them:",
+  ];
+  if (u) lines.push(`- Instagram username (@handle): ${u}`);
+  if (n) lines.push(`- Display name: ${n}`);
+  lines.push(
+    [
+      "Work out the most natural, human way to address them:",
+      "- Prefer a clear real name when one is evident (usually the display name) over the @username.",
+      "- Recognize nicknames (e.g. \"Mo\", \"Mikey\", \"Ebs\") and use them naturally as nicknames.",
+      "- Don't robotically repeat their username, and don't address them by a meme-y/handle-style username as if it were their name.",
+      "- You may lightly, naturally acknowledge a striking contrast between a normal display name and a joke username if it fits the vibe (e.g. a real name behind a name like \"xX_DarkBot_Xx\").",
+      "- Only use a name when it actually flows; never invent one that isn't supported by the cues above.",
+    ].join("\n"),
+  );
+  return lines.join("\n");
 }
