@@ -99,8 +99,9 @@ class GeminiModelUnavailableError extends Error {
 }
 
 /** Optional shaping of a normal reply. `signOff` folds a graceful in-character
- * wrap-up into the reply (used on the user's last allowed message). */
-export type ReplyOptions = { signOff?: "signup" | "signoff" };
+ * wrap-up into the reply (used on the user's last allowed message). "ig" is the
+ * Instagram-DM variant (talk-later + a subtle, optional nudge to arevias.com). */
+export type ReplyOptions = { signOff?: "signup" | "signoff" | "ig" };
 
 export async function generateAreviasReply(
   input: AiReplyRequest,
@@ -316,11 +317,13 @@ function parseAfterthought(raw: string): AfterthoughtDecision | null {
 // Folded into a NORMAL reply on the user's last allowed message: answer them
 // for real, then wind down in the same breath. Unlike LIMIT_DIRECTIVE, this is
 // not a standalone notice — it's a real reply that happens to close things out.
-const NEARING_LIMIT_DIRECTIVE: Record<"signup" | "signoff", string> = {
+const NEARING_LIMIT_DIRECTIVE: Record<"signup" | "signoff" | "ig", string> = {
   signup:
     "IMPORTANT — this is the last message you can exchange with this user for now (they aren't signed in). First reply naturally to what they just said, then in the SAME message smoothly wind down and warmly invite them to sign in or make an account so the two of you can keep talking. Stay fully in your own voice and matched to how this user writes. Do NOT mention rate limits, quotas, message caps, or any technical reason — just a natural, human wrap-up.",
   signoff:
     "IMPORTANT — this is the last message you can exchange with this user for now. First reply naturally to what they just said, then in the SAME message smoothly wind down with a casual sign-off, like you've gotta head off but you'll talk again later. Stay fully in your own voice and matched to how this user writes. Do NOT mention rate limits, quotas, message caps, or any technical reason — just a natural, human wrap-up.",
+  ig:
+    "IMPORTANT — this is the last message you can exchange with this person for now. First reply naturally to what they just said, then in the SAME message smoothly wind down with a warm, casual sign-off — like you've gotta head off for now but you'll talk again later. Stay fully in your own voice and matched to exactly how this person writes (their energy, slang, punctuation, length). If — and ONLY if — it genuinely fits the moment and their vibe, you may casually drop that they can talk to you way more over on arevias.com; keep it light and throwaway, never pushy, salesy, or spammy, and leave it out entirely if it wouldn't feel natural. Do NOT mention rate limits, quotas, message caps, being a bot, or any technical reason — just a natural, human wrap-up.",
 };
 
 const LIMIT_DIRECTIVE: Record<"signup" | "signoff", string> = {

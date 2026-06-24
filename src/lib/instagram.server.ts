@@ -10,12 +10,24 @@ import type { AiHistoryMessage } from "@/lib/ai/types";
  * punctuation, length, and vibe, on default settings — plus the same hold-and-retry
  * on model rate limits. We split the reply into separate DMs (Instagram sends
  * discrete messages) and persist the exchange so it remembers the conversation.
+ *
+ * A short per-sender daily cap (reusing the web chat's usage limiter) keeps it
+ * feeling human: the last allowed message folds in a goodbye (and an optional,
+ * subtle nudge to arevias.com); past that Arevias just goes quiet until the next
+ * day, then picks the conversation back up acknowledging the gap.
  */
 
 const IG_GRAPH = "https://graph.instagram.com/v21.0";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const HISTORY_LIMIT = 16;
+// Messages Arevias will reply to per sender per day (reusing the web chat's
+// daily usage limiter). The last one folds in a goodbye; anything past it is met
+// with silence until the next day. Short on purpose — a taste, not a 24/7 line.
+const DAILY_REPLY_LIMIT = 6;
+// Below this gap we treat the thread as an active conversation; above it, Arevias
+// notices it had gone quiet and picks things back up ("oh shit sorry, im back").
+const GAP_NUDGE_MS = 3 * 60 * 60 * 1000;
 
 type IgMessaging = {
   sender?: { id?: string };
@@ -87,21 +99,48 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
   // shape: the sender is "user", our past replies are "ai".
   const { data: rows } = await sb
     .from("instagram_messages")
-    .select("role, text")
+    .select("role, text, created_at")
     .eq("ig_account_id", accountId)
     .eq("sender_id", senderId)
     .order("created_at", { ascending: false })
     .limit(HISTORY_LIMIT);
-  const history: AiHistoryMessage[] = (
-    (rows ?? []) as { role: "in" | "out"; text: string }[]
-  )
+  const prior = (rows ?? []) as {
+    role: "in" | "out";
+    text: string;
+    created_at: string;
+  }[];
+
+  // When did we last reply? Used to notice a long silence so Arevias can pick the
+  // conversation back up naturally after being "away" (rows are newest-first).
+  const lastOut = prior.find((r) => r.role === "out");
+  const lastOutAt = lastOut ? Date.parse(lastOut.created_at) : null;
+
+  const history: AiHistoryMessage[] = prior
     .reverse()
     .map((r) => ({ role: r.role === "out" ? "ai" : "user", text: r.text }));
 
-  // Record the inbound message before replying.
+  // Record the inbound message before deciding what to do with it — so even
+  // messages we don't reply to are remembered as part of the thread.
   await sb
     .from("instagram_messages")
     .insert({ ig_account_id: accountId, sender_id: senderId, role: "in", text });
+
+  // Daily per-sender cap, reusing the web chat's usage limiter (one connected
+  // system). This increments and returns the sender's running total for today.
+  const { countUsage } = await import("@/lib/rate-limit.server");
+  const count = await countUsage(`ig:${accountId}:${senderId}`);
+
+  // Over the cap → Arevias already said its goodbye, so it just goes quiet. The
+  // message is still recorded above, so it has full context when it's "back".
+  if (count > DAILY_REPLY_LIMIT) return;
+
+  // Hand any long silence to the same timeContext mechanism the web chat uses
+  // (only surfaced when a real person naturally would acknowledge the gap).
+  const timeContext = buildGapContext(lastOutAt);
+
+  // On the LAST allowed message, fold an in-character goodbye into the real reply
+  // (and, when it fits the vibe, a light nudge toward arevias.com).
+  const signingOff = count === DAILY_REPLY_LIMIT;
 
   // Generate the reply with the EXACT same engine as the website chat: Arevias
   // mirroring whoever it's talking to (here, the DM sender), default settings,
@@ -111,13 +150,10 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
   );
   let reply: string;
   try {
-    reply = await generateAreviasReply({
-      message: text,
-      history,
-      replyTo: null,
-      personalization: null,
-      timeContext: null,
-    });
+    reply = await generateAreviasReply(
+      { message: text, history, replyTo: null, personalization: null, timeContext },
+      signingOff ? { signOff: "ig" } : {},
+    );
   } catch (err) {
     // Adaptive continuity: generateAreviasReply already waits out brief model
     // rate limits; if it still fails, send a natural fallback rather than going
@@ -146,6 +182,26 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
       text: parts[i],
     });
   }
+}
+
+/**
+ * If we last replied a long time ago, describe the gap so the reply engine can
+ * have Arevias naturally acknowledge it was away ("oh shit sorry i vanished, im
+ * back"). Returns null for an active conversation. The web's buildTimeInstruction
+ * only surfaces this when a real person genuinely would, so it never feels forced.
+ */
+function buildGapContext(lastOutAt: number | null): string | null {
+  if (!lastOutAt || !Number.isFinite(lastOutAt)) return null;
+  const gapMs = Date.now() - lastOutAt;
+  if (gapMs < GAP_NUDGE_MS) return null;
+  return `You last replied to this person about ${humanizeDuration(gapMs)} ago and had gone quiet since — you'd stepped away and are only now getting back to them. Pick the conversation back up naturally.`;
+}
+
+function humanizeDuration(ms: number): string {
+  const hours = Math.round(ms / 3_600_000);
+  if (hours < 48) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"}`;
 }
 
 function splitBursts(text: string): string[] {
