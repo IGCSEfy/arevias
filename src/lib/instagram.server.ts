@@ -1,14 +1,15 @@
 import "@tanstack/react-start/server-only";
-import type { AiPersonalization } from "@/lib/ai/types";
+import type { AiHistoryMessage } from "@/lib/ai/types";
 
 /**
  * Instagram DM auto-reply pipeline.
  *
- * On an inbound DM: find the Arevias account that owns the receiving IG account,
- * load that owner's personalization + the thread history with this sender, have
- * Arevias generate a reply **in the owner's own voice**, send it back (splitting
- * into bursts / double-texts per the owner's style), and persist the exchange so
- * it remembers the conversation next time.
+ * This is the **same Arevias** as the website chat — not a separate system. On
+ * an inbound DM we hand the thread to the exact web engine (`generateAreviasReply`)
+ * so Arevias mirrors whoever it's talking to (the DM sender): their bursts,
+ * punctuation, length, and vibe, on default settings — plus the same hold-and-retry
+ * on model rate limits. We split the reply into separate DMs (Instagram sends
+ * discrete messages) and persist the exchange so it remembers the conversation.
  */
 
 const IG_GRAPH = "https://graph.instagram.com/v21.0";
@@ -70,7 +71,7 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
   // Which Arevias account owns this IG account?
   const { data: conn } = await sb
     .from("instagram_connections")
-    .select("user_id, access_token, enabled, custom_instructions, use_personalization")
+    .select("access_token, enabled")
     .eq("ig_account_id", accountId)
     .maybeSingle();
 
@@ -82,21 +83,8 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
     return;
   }
 
-  // Apply the owner's Arevias personalization only when the connection opts in
-  // (set when they properly connect their account). Until then, neutral
-  // defaults — reply naturally and mirror, without their personal-chat
-  // personality/style bleeding into DM replies.
-  let preferences: AiPersonalization | null = null;
-  if (conn.use_personalization) {
-    const { data: profile } = await sb
-      .from("profiles")
-      .select("preferences")
-      .eq("id", conn.user_id)
-      .maybeSingle();
-    preferences = (profile?.preferences ?? null) as AiPersonalization | null;
-  }
-
-  // Recent thread history with this sender (oldest → newest).
+  // Recent thread history with this sender (oldest → newest), in the web chat's
+  // shape: the sender is "user", our past replies are "ai".
   const { data: rows } = await sb
     .from("instagram_messages")
     .select("role, text")
@@ -104,29 +92,46 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
     .eq("sender_id", senderId)
     .order("created_at", { ascending: false })
     .limit(HISTORY_LIMIT);
-  const history = ((rows ?? []) as { role: "in" | "out"; text: string }[])
+  const history: AiHistoryMessage[] = (
+    (rows ?? []) as { role: "in" | "out"; text: string }[]
+  )
     .reverse()
-    .map((r) => ({ role: r.role, text: r.text }));
+    .map((r) => ({ role: r.role === "out" ? "ai" : "user", text: r.text }));
 
   // Record the inbound message before replying.
   await sb
     .from("instagram_messages")
     .insert({ ig_account_id: accountId, sender_id: senderId, role: "in", text });
 
-  // Who is this? Pull their username + display name so the reply addresses them
-  // naturally (real name over handle, recognize nicknames, etc.).
-  const identity = await fetchSenderIdentity(senderId, token);
-
-  // Generate the reply in the owner's voice.
-  const { generateAsUserReply } = await import("@/lib/ai/gemini.server");
-  const reply = await generateAsUserReply({
-    message: text,
-    history,
-    preferences,
-    customInstructions: conn.custom_instructions || undefined,
-    senderUsername: identity.username,
-    senderName: identity.name,
-  });
+  // Generate the reply with the EXACT same engine as the website chat: Arevias
+  // mirroring whoever it's talking to (here, the DM sender), default settings,
+  // same burst behaviour, same hold-and-retry on model rate limits.
+  const { generateAreviasReply, GeminiRateLimitError } = await import(
+    "@/lib/ai/gemini.server"
+  );
+  let reply: string;
+  try {
+    reply = await generateAreviasReply({
+      message: text,
+      history,
+      replyTo: null,
+      personalization: null,
+      timeContext: null,
+    });
+  } catch (err) {
+    // Adaptive continuity: generateAreviasReply already waits out brief model
+    // rate limits; if it still fails, send a natural fallback rather than going
+    // silent — and don't store it as part of the remembered thread.
+    const { AI_FALLBACK_RATE_LIMIT, AI_FALLBACK_GENERIC } = await import(
+      "@/lib/ai/types"
+    );
+    const fallback =
+      err instanceof GeminiRateLimitError
+        ? AI_FALLBACK_RATE_LIMIT
+        : AI_FALLBACK_GENERIC;
+    await sendInstagramMessage(senderId, fallback, token);
+    return;
+  }
 
   // Split into bursts (double-texting) on line breaks; send each as its own DM
   // with a short, human delay, and persist each as part of the thread.
@@ -149,28 +154,6 @@ function splitBursts(text: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
   return parts.length ? parts.slice(0, 3) : [text.trim()];
-}
-
-/** Look up a sender's display name + @username from their Instagram-scoped ID. */
-async function fetchSenderIdentity(
-  igsid: string,
-  token: string,
-): Promise<{ username?: string; name?: string }> {
-  try {
-    const res = await fetch(`${IG_GRAPH}/${igsid}?fields=name,username`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      console.warn("[instagram] identity lookup failed", res.status, detail);
-      return {};
-    }
-    const data = (await res.json()) as { name?: string; username?: string };
-    return { username: data.username, name: data.name };
-  } catch (err) {
-    console.warn("[instagram] identity lookup error", err);
-    return {};
-  }
 }
 
 async function sendInstagramMessage(
