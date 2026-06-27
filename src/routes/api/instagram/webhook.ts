@@ -45,14 +45,30 @@ export const Route = createFileRoute("/api/instagram/webhook")({
         const raw = await request.text();
 
         // Confirm the event really came from Meta before trusting it.
-        // Trim the secret — a stray trailing newline from pasting it into the env
-        // var would otherwise make every signature check fail.
-        const appSecret = process.env.INSTAGRAM_APP_SECRET?.trim();
-        if (appSecret) {
+        // INSTAGRAM_APP_SECRET may list MULTIPLE comma-separated candidate
+        // secrets (each trimmed) — apps using "Instagram API with Instagram
+        // Login" sign webhooks with the *Instagram* app secret, which differs
+        // from the Meta App Secret (App Settings > Basic). Listing both lets
+        // whichever Meta actually used match, so we don't have to guess.
+        const secrets = (process.env.INSTAGRAM_APP_SECRET ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (secrets.length) {
           const signature = request.headers.get("x-hub-signature-256") ?? "";
-          const valid = await verifyMetaSignature(raw, signature, appSecret);
-          if (!valid) {
-            console.warn("[instagram webhook] signature verification failed");
+          const check = await verifyMetaSignature(raw, signature, secrets);
+          if (!check.valid) {
+            // Diagnostic for the Vercel logs — only hash prefixes + lengths, never
+            // the secret itself. If `received` matches one of `computed`, the body
+            // is fine and it's a secret problem; if none ever match across known
+            // secrets, suspect a body/proxy issue instead.
+            console.warn("[instagram webhook] signature mismatch", {
+              hasHeader: signature.startsWith("sha256="),
+              bodyLength: raw.length,
+              received: signature.slice("sha256=".length, "sha256=".length + 10),
+              computed: check.computedPrefixes,
+              secretLengths: secrets.map((s) => s.length),
+            });
             return new Response("Invalid signature", { status: 403 });
           }
         }
@@ -81,17 +97,32 @@ export const Route = createFileRoute("/api/instagram/webhook")({
   },
 });
 
-/** HMAC-SHA256 check of the raw body against Meta's X-Hub-Signature-256 header. */
+/**
+ * HMAC-SHA256 check of the raw body against Meta's X-Hub-Signature-256 header,
+ * accepting a match against ANY of the candidate secrets (so the Instagram app
+ * secret and the Meta app secret can both be listed and we needn't know which
+ * one Meta used). Also returns each computed hash's prefix for diagnostics —
+ * those are hashes, not the secrets, so they're safe to log.
+ */
 async function verifyMetaSignature(
   raw: string,
   header: string,
-  secret: string,
-): Promise<boolean> {
-  if (!header.startsWith("sha256=")) return false;
+  secrets: string[],
+): Promise<{ valid: boolean; computedPrefixes: string[] }> {
+  const computedPrefixes: string[] = [];
+  if (!header.startsWith("sha256=")) return { valid: false, computedPrefixes };
+
   const { createHmac, timingSafeEqual } = await import("node:crypto");
-  const expected = createHmac("sha256", secret).update(raw).digest("hex");
-  const provided = header.slice("sha256=".length);
-  const a = Buffer.from(expected, "hex");
-  const b = Buffer.from(provided, "hex");
-  return a.length === b.length && timingSafeEqual(a, b);
+  const provided = Buffer.from(header.slice("sha256=".length), "hex");
+
+  let valid = false;
+  for (const secret of secrets) {
+    const expectedHex = createHmac("sha256", secret).update(raw).digest("hex");
+    computedPrefixes.push(expectedHex.slice(0, 10));
+    const expected = Buffer.from(expectedHex, "hex");
+    if (expected.length === provided.length && timingSafeEqual(expected, provided)) {
+      valid = true;
+    }
+  }
+  return { valid, computedPrefixes };
 }
