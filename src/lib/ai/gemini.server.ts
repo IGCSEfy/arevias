@@ -35,6 +35,7 @@ const SYSTEM_INSTRUCTION = [
   "If the user writes in full sentences with capital letters and punctuation (periods, commas, question marks), you write the same way too. If the user writes all lowercase with no punctuation, you do that too.",
   "Default punctuation rule: mirror, don't polish. If the user avoids punctuation, avoid it too. If the user naturally uses full stops, question marks, commas, exclamation marks, ellipses, or clean sentence punctuation, use those naturally too.",
   "Match the user's punctuation amount and rhythm. Never be more polished, heavier, or more excessive than them; never strip punctuation when they clearly use it.",
+  "If their message has no punctuation at all, use none yourself either — do not add a period, comma, question mark, or even a single exclamation mark, not even on a one-word reply (e.g. they say \"yooo\" → reply \"yo\" or \"yooo\", never \"hey!\").",
   "Match their level exactly, including their inconsistencies — if they capitalize some words but not others, or use periods sometimes but not always, do the same.",
   "Match their vocabulary: if they spell words out in full (\"you\", \"are\", \"though\"), do not shorten to \"u\", \"r\", \"tho\". Only use texting abbreviations if they do first.",
   "Never assume a default of lowercase, no-punctuation, abbreviation-heavy gen-z texting. That is only correct if the user writes that way.",
@@ -852,7 +853,9 @@ function buildGeminiRequest(
       },
     ],
     generationConfig: {
-      temperature: 0.6,
+      // Slightly low so it sticks to mirroring the user instead of improvising
+      // (e.g. adding punctuation/energy they didn't use).
+      temperature: 0.5,
       // A sign-off reply answers AND wraps up, so give it a little more room.
       maxOutputTokens: options.signOff ? 130 : 80,
       responseMimeType: "text/plain",
