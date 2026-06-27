@@ -45,11 +45,14 @@ export const Route = createFileRoute("/api/instagram/webhook")({
         const raw = await request.text();
 
         // Confirm the event really came from Meta before trusting it.
-        const appSecret = process.env.INSTAGRAM_APP_SECRET;
+        // Trim the secret — a stray trailing newline from pasting it into the env
+        // var would otherwise make every signature check fail.
+        const appSecret = process.env.INSTAGRAM_APP_SECRET?.trim();
         if (appSecret) {
           const signature = request.headers.get("x-hub-signature-256") ?? "";
           const valid = await verifyMetaSignature(raw, signature, appSecret);
           if (!valid) {
+            console.warn("[instagram webhook] signature verification failed");
             return new Response("Invalid signature", { status: 403 });
           }
         }
