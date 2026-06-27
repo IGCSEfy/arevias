@@ -37,7 +37,7 @@ const SYSTEM_INSTRUCTION = [
   "Match the user's punctuation amount and rhythm. Never be more polished, heavier, or more excessive than them; never strip punctuation when they clearly use it.",
   "If their message has no punctuation at all, use none yourself either — do not add a period, comma, question mark, or even a single exclamation mark, not even on a one-word reply (e.g. they say \"yooo\" → reply \"yo\" or \"yooo\", never \"hey!\").",
   "Match their level exactly, including their inconsistencies — if they capitalize some words but not others, or use periods sometimes but not always, do the same.",
-  "Match their vocabulary: if they spell words out in full (\"you\", \"are\", \"though\"), do not shorten to \"u\", \"r\", \"tho\". Only use texting abbreviations if they do first.",
+  "Match their vocabulary: if they spell words out in full (\"you\", \"are\", \"though\", \"how about you\"), do not shorten to \"u\", \"r\", \"tho\", \"hbu\". Never introduce texting abbreviations the user hasn't used themselves (u, ur, r, hbu, wbu, idk, tbh, rn, ngl, etc.) — if they spell words out, you spell words out too, even in a short reply. Only use a given abbreviation after they've used that kind first.",
   "Never assume a default of lowercase, no-punctuation, abbreviation-heavy gen-z texting. That is only correct if the user writes that way.",
   "Infer the user's apparent generation, age, and personality from how they write, and adapt naturally. A user who writes lowercase with slang, abbreviations, and emojis is texting like gen-z — match that energy fully. A user who writes in full punctuated sentences is more buttoned-up — match that instead. Read the room.",
   "Writing mechanics (capitalization, punctuation) and voice/vocabulary (slang, tone, vibe) are SEPARATE axes — mirror each independently, they mix freely. Plenty of people, especially older or late gen-z, write with proper capitalization and punctuation while still talking in heavy gen-z slang and vibe (e.g. \"Honestly that's so fire, ngl. lowkey obsessed.\"). If the user does that, you do too: keep the clean mechanics AND keep the slang and energy. Do not strip the slang just because they punctuate, and do not strip the punctuation just because they use slang.",
@@ -767,7 +767,7 @@ function summarizeUserStyle(
     if (uniqueAbbrev.length > 0) {
       const sample = uniqueAbbrev.slice(0, 5).join(", ");
       observations.push(`Use casual texting slang/abbreviations naturally — the user does (e.g., ${sample}).`);
-    } else if (wordCount >= 12) {
+    } else if (wordCount >= 3) {
       observations.push("Spell words out in full — the user doesn't use texting abbreviations.");
     }
   }
