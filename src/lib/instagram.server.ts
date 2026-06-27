@@ -142,6 +142,11 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
   // (and, when it fits the vibe, a light nudge toward arevias.com).
   const signingOff = count === DAILY_REPLY_LIMIT;
 
+  // Who is this? Pull their display name + @username so Arevias can address them
+  // naturally. Additive context only — the web chat can't have it, and the reply
+  // engine is the same; the web simply never passes `identity`.
+  const identity = await fetchSenderIdentity(senderId, token);
+
   // Generate the reply with the EXACT same engine as the website chat: Arevias
   // mirroring whoever it's talking to (here, the DM sender), default settings,
   // same burst behaviour, same hold-and-retry on model rate limits.
@@ -151,7 +156,14 @@ async function handleInbound(accountId: string, senderId: string, text: string) 
   let reply: string;
   try {
     reply = await generateAreviasReply(
-      { message: text, history, replyTo: null, personalization: null, timeContext },
+      {
+        message: text,
+        history,
+        replyTo: null,
+        personalization: null,
+        timeContext,
+        identity,
+      },
       signingOff ? { signOff: "ig" } : {},
     );
   } catch (err) {
@@ -210,6 +222,28 @@ function splitBursts(text: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
   return parts.length ? parts.slice(0, 3) : [text.trim()];
+}
+
+/** Look up a sender's display name + @username from their Instagram-scoped ID. */
+async function fetchSenderIdentity(
+  igsid: string,
+  token: string,
+): Promise<{ username?: string; name?: string }> {
+  try {
+    const res = await fetch(`${IG_GRAPH}/${igsid}?fields=name,username`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.warn("[instagram] identity lookup failed", res.status, detail);
+      return {};
+    }
+    const data = (await res.json()) as { name?: string; username?: string };
+    return { username: data.username, name: data.name };
+  } catch (err) {
+    console.warn("[instagram] identity lookup error", err);
+    return {};
+  }
 }
 
 async function sendInstagramMessage(

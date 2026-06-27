@@ -831,6 +831,38 @@ function collectUserMessages(input: AiReplyRequest, message: string): string[] {
   return [...fromHistory, message].slice(-12);
 }
 
+/**
+ * Intelligent identity understanding: when the surface knows who Arevias is
+ * talking to (Instagram supplies the sender's display name + @username), hand
+ * the model those cues and let it work out the most natural way to address them
+ * — prefer a real name, recognize nicknames, don't parrot a handle, never invent
+ * one. Returns "" when there's nothing to go on (the web chat never sets this).
+ */
+function buildIdentitySection(
+  identity?: { username?: string; name?: string } | null,
+): string {
+  const u = identity?.username ? clean(identity.username, 100) : "";
+  const n = identity?.name ? clean(identity.name, 100) : "";
+  if (!u && !n) return "";
+
+  const lines = [
+    "Who you're talking to — interpret these cues, don't just parrot them:",
+  ];
+  if (n) lines.push(`- Display name: ${n}`);
+  if (u) lines.push(`- @username: ${u}`);
+  lines.push(
+    [
+      "Work out the most natural, human way to address them:",
+      "- Prefer a clear real name when one is evident (usually the display name) over the @username.",
+      '- Recognize nicknames (e.g. "Mo", "Mikey", "Ebs") and use them naturally.',
+      "- Don't robotically repeat their username, and don't use a meme-y/handle-style username as if it were their real name.",
+      '- You may lightly acknowledge a striking contrast between a normal display name and a joke username if it fits the vibe (e.g. a real name behind "xX_DarkBot_Xx").',
+      "- Don't force a name into every message; only use it when it flows naturally. Never invent a name that isn't supported by these cues.",
+    ].join("\n"),
+  );
+  return lines.join("\n");
+}
+
 function buildGeminiRequest(
   input: AiReplyRequest,
   message: string,
@@ -838,6 +870,8 @@ function buildGeminiRequest(
 ) {
   const styleSummary = summarizeUserStyle(collectUserMessages(input, message), input.personalization);
   let systemText = buildSystemInstruction(input.personalization, styleSummary, input.timeContext);
+  const identitySection = buildIdentitySection(input.identity);
+  if (identitySection) systemText += `\n\n${identitySection}`;
   if (options.signOff) {
     systemText += `\n\n${NEARING_LIMIT_DIRECTIVE[options.signOff]}`;
   }

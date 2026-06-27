@@ -59,6 +59,12 @@ export type AiReplyRequest = {
    * Arevias reason about time without the server guessing the user's locale.
    */
   timeContext?: string | null;
+  /**
+   * Who Arevias is replying to, when the surface actually knows (Instagram
+   * supplies the sender's display name + @username). Lets Arevias address them
+   * naturally. The web chat has no such info and never sets this.
+   */
+  identity?: { username?: string; name?: string } | null;
 };
 
 /** Why a reply was a limit message rather than a normal one. */
