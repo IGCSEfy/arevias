@@ -17,10 +17,10 @@ function AboutPage() {
           fullScreen={false}
           title={
             <>
-              The <span className="text-neutral-600">Team</span>
+              Behind <span className="text-neutral-600">Arevias</span>
             </>
           }
-          eyebrow="Arevias"
+          eyebrow="The Team"
           members={[
             { id: "01", name: "Ebrahim Tariq", role: "Founder & CEO" },
           ]}
