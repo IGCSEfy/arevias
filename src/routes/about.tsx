@@ -25,7 +25,7 @@ function AboutPage() {
             <img
               src={nanorisLogo}
               alt="Nanoris"
-              className="block h-16 w-auto"
+              className="block h-14 w-auto md:h-24"
             />
           }
           members={[
