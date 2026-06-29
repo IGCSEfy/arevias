@@ -4,6 +4,16 @@ import { type ReactNode } from "react";
 import { PageTransition } from "@/components/arevias/page-transition";
 
 export const Route = createFileRoute("/terms")({
+  head: () => ({
+    meta: [
+      { title: "Terms of Service — Arevias" },
+      {
+        name: "description",
+        content: "The terms that govern your use of Arevias.",
+      },
+      { property: "og:title", content: "Terms of Service — Arevias" },
+    ],
+  }),
   component: TermsPage,
 });
 

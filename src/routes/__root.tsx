@@ -71,6 +71,26 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
     <html lang="en" style={{ background: "#000" }}>
       <head>
         <HeadContent />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Arevias",
+              url: "https://www.arevias.com",
+              logo: `https://www.arevias.com${areviasFavicon}`,
+              description:
+                "Arevias — AI but human. A conversation partner that adapts to you.",
+              founder: {
+                "@type": "Person",
+                name: "Ebrahim Tariq",
+                jobTitle: "Founder & CEO",
+                sameAs: "https://www.linkedin.com/in/ebrahim-tariq-641128380/",
+              },
+            }),
+          }}
+        />
       </head>
       <body style={{ background: "#000", color: "#fff" }}>
         {children}

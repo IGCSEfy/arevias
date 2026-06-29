@@ -4,3 +4,5 @@ Disallow: /api/
 Disallow: /auth/
 Disallow: /profile
 Disallow: /c/
+
+Sitemap: https://www.arevias.com/sitemap.xml

@@ -4,6 +4,21 @@ import { PageTransition } from "@/components/arevias/page-transition";
 import changelogBeta from "@/assets/changelog-beta-1.0.png";
 
 export const Route = createFileRoute("/changelog")({
+  head: () => ({
+    meta: [
+      { title: "Changelog — Arevias" },
+      {
+        name: "description",
+        content:
+          "What's new in Arevias — the latest features, updates, and improvements.",
+      },
+      { property: "og:title", content: "Changelog — Arevias" },
+      {
+        property: "og:description",
+        content: "The latest features, updates, and improvements to Arevias.",
+      },
+    ],
+  }),
   component: ChangelogPage,
 });
 

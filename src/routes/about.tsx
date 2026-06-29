@@ -6,6 +6,21 @@ import KineticTeamHybrid from "@/components/ui/kinetic-team-hybrid";
 import nanorisLogo from "@/assets/nanoris-logo.png";
 
 export const Route = createFileRoute("/about")({
+  head: () => ({
+    meta: [
+      { title: "About Arevias" },
+      {
+        name: "description",
+        content:
+          "The team behind Arevias — AI but human. Founded by Ebrahim Tariq, building a conversation partner that adapts to you.",
+      },
+      { property: "og:title", content: "About Arevias" },
+      {
+        property: "og:description",
+        content: "The team behind Arevias — AI but human.",
+      },
+    ],
+  }),
   component: AboutPage,
 });
 

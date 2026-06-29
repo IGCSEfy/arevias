@@ -4,6 +4,16 @@ import { type ReactNode } from "react";
 import { PageTransition } from "@/components/arevias/page-transition";
 
 export const Route = createFileRoute("/privacy")({
+  head: () => ({
+    meta: [
+      { title: "Privacy Policy — Arevias" },
+      {
+        name: "description",
+        content: "How Arevias collects, uses, and protects your data.",
+      },
+      { property: "og:title", content: "Privacy Policy — Arevias" },
+    ],
+  }),
   component: PrivacyPage,
 });
 
