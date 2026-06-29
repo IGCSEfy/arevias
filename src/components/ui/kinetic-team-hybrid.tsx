@@ -23,8 +23,8 @@ interface KineticTeamHybridProps {
   members?: TeamMember[];
   /** Big headline. Pass `null` to hide it and show only the eyebrow label. */
   title?: React.ReactNode;
-  /** Small uppercase label. */
-  eyebrow?: string;
+  /** Small label on the right of the header — text, or an element such as a logo. */
+  eyebrow?: React.ReactNode;
   /** Standalone full-screen section (default) vs. embedded between other sections. */
   fullScreen?: boolean;
   className?: string;

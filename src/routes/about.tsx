@@ -3,6 +3,7 @@ import { PageTransition } from "@/components/arevias/page-transition";
 import AboutSection2 from "@/components/ui/about-section-2";
 import { ClipPathLinks } from "@/components/ui/clip-path-links";
 import KineticTeamHybrid from "@/components/ui/kinetic-team-hybrid";
+import nanorisLogo from "@/assets/nanoris-logo.png";
 
 export const Route = createFileRoute("/about")({
   component: AboutPage,
@@ -20,7 +21,9 @@ function AboutPage() {
               Behind <span className="text-neutral-600">Arevias</span>
             </>
           }
-          eyebrow="The Team"
+          eyebrow={
+            <img src={nanorisLogo} alt="Nanoris" className="h-10 w-auto" />
+          }
           members={[
             { id: "01", name: "Ebrahim Tariq", role: "Founder & CEO" },
           ]}
