@@ -30,56 +30,12 @@ interface KineticTeamHybridProps {
   className?: string;
 }
 
-/* ---------- Default Data ---------- */
-
-const TEAM: TeamMember[] = [
-  {
-    id: "01",
-    name: "Alex Morgan",
-    role: "Design Director",
-    image:
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1000&auto=format&fit=crop",
-  },
-  {
-    id: "02",
-    name: "Jordan Lee",
-    role: "Lead Architect",
-    image:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1000&auto=format&fit=crop",
-  },
-  {
-    id: "03",
-    name: "Casey Smith",
-    role: "Creative Technologist",
-    image:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop",
-  },
-  {
-    id: "04",
-    name: "Taylor Reed",
-    role: "Brand Strategist",
-    image:
-      "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=1000&auto=format&fit=crop",
-  },
-  {
-    id: "05",
-    name: "Riley Davis",
-    role: "Motion Designer",
-    image:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&auto=format&fit=crop",
-  },
-];
-
 /* ---------- Main Component ---------- */
 
 export default function KineticTeamHybrid({
-  members = TEAM,
-  title = (
-    <>
-      Creative <span className="text-neutral-600">Talent</span>
-    </>
-  ),
-  eyebrow = "Selected Works '24",
+  members = [],
+  title = null,
+  eyebrow,
   fullScreen = true,
   className,
 }: KineticTeamHybridProps = {}) {

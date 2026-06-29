@@ -15,9 +15,15 @@ function AboutPage() {
         <AboutSection2 />
         <KineticTeamHybrid
           fullScreen={false}
-          title={null}
-          eyebrow="Team"
-          members={[{ id: "01", name: "Ebrahim Tariq", role: "CEO" }]}
+          title={
+            <>
+              The <span className="text-neutral-600">Team</span>
+            </>
+          }
+          eyebrow="Arevias"
+          members={[
+            { id: "01", name: "Ebrahim Tariq", role: "Founder & CEO" },
+          ]}
         />
         <section className="px-4 pb-32">
           <div className="mx-auto max-w-6xl">
