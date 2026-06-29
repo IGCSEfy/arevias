@@ -22,7 +22,11 @@ function AboutPage() {
             </>
           }
           eyebrow={
-            <img src={nanorisLogo} alt="Nanoris" className="h-10 w-auto" />
+            <img
+              src={nanorisLogo}
+              alt="Nanoris"
+              className="block h-16 w-auto"
+            />
           }
           members={[
             {
