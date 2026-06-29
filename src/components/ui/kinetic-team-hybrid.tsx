@@ -16,6 +16,8 @@ interface TeamMember {
   role: string;
   /** Optional — when omitted, the hover/accordion image is skipped for that row. */
   image?: string;
+  /** Optional — makes the row a clickable external link (opens in a new tab). */
+  link?: string;
 }
 
 interface KineticTeamHybridProps {
@@ -194,6 +196,46 @@ function TeamRow({
   const isDimmed = isAnyActive && !isActive;
   const hasImage = Boolean(data.image);
 
+  const rowClass =
+    "relative z-10 flex flex-col py-8 md:flex-row md:items-center md:justify-between md:py-12";
+  const rowInner = (
+    <>
+      {/* Name & Index Section */}
+      <div className="flex items-baseline gap-6 pl-4 transition-transform duration-500 group-hover:translate-x-4 md:gap-12 md:pl-0">
+        <span className="font-mono text-xs text-neutral-600">0{index + 1}</span>
+        <h2 className="text-3xl font-medium tracking-tight text-neutral-400 transition-colors duration-300 group-hover:text-white md:text-6xl">
+          {data.name}
+        </h2>
+      </div>
+
+      {/* Role & Icon Section */}
+      <div className="mt-4 flex items-center justify-between pl-12 pr-4 md:mt-0 md:justify-end md:gap-12 md:pl-0 md:pr-0">
+        <span className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-600 transition-colors group-hover:text-neutral-400">
+          {data.role}
+        </span>
+
+        {/* Mobile affordance: +/- when there's an image, arrow when it's a link */}
+        {hasImage ? (
+          <div className="block text-neutral-500 md:hidden">
+            {isActive ? <Minus size={18} /> : <Plus size={18} />}
+          </div>
+        ) : data.link ? (
+          <div className="block text-white/70 md:hidden">
+            <ArrowUpRight size={18} />
+          </div>
+        ) : null}
+
+        {/* Desktop Arrow */}
+        <motion.div
+          animate={{ x: isActive ? 0 : -10, opacity: isActive ? 1 : 0 }}
+          className="hidden text-white md:block"
+        >
+          <ArrowUpRight size={28} strokeWidth={1.5} />
+        </motion.div>
+      </div>
+    </>
+  );
+
   return (
     <motion.div
       layout // enables smooth height animation on mobile
@@ -215,39 +257,18 @@ function TeamRow({
         isMobile && hasImage ? "cursor-pointer" : "cursor-default",
       )}
     >
-      <div className="relative z-10 flex flex-col py-8 md:flex-row md:items-center md:justify-between md:py-12">
-        {/* Name & Index Section */}
-        <div className="flex items-baseline gap-6 pl-4 transition-transform duration-500 group-hover:translate-x-4 md:gap-12 md:pl-0">
-          <span className="font-mono text-xs text-neutral-600">
-            0{index + 1}
-          </span>
-          <h2 className="text-3xl font-medium tracking-tight text-neutral-400 transition-colors duration-300 group-hover:text-white md:text-6xl">
-            {data.name}
-          </h2>
-        </div>
-
-        {/* Role & Icon Section */}
-        <div className="mt-4 flex items-center justify-between pl-12 pr-4 md:mt-0 md:justify-end md:gap-12 md:pl-0 md:pr-0">
-          <span className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-600 transition-colors group-hover:text-neutral-400">
-            {data.role}
-          </span>
-
-          {/* Mobile Toggle Icon (only when there's an image to reveal) */}
-          {hasImage ? (
-            <div className="block text-neutral-500 md:hidden">
-              {isActive ? <Minus size={18} /> : <Plus size={18} />}
-            </div>
-          ) : null}
-
-          {/* Desktop Arrow */}
-          <motion.div
-            animate={{ x: isActive ? 0 : -10, opacity: isActive ? 1 : 0 }}
-            className="hidden text-white md:block"
-          >
-            <ArrowUpRight size={28} strokeWidth={1.5} />
-          </motion.div>
-        </div>
-      </div>
+      {data.link ? (
+        <a
+          href={data.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(rowClass, "cursor-pointer")}
+        >
+          {rowInner}
+        </a>
+      ) : (
+        <div className={rowClass}>{rowInner}</div>
+      )}
 
       {/* MOBILE ONLY: Inline Accordion Image */}
       <AnimatePresence>

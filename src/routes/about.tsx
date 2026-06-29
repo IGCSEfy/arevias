@@ -25,7 +25,12 @@ function AboutPage() {
             <img src={nanorisLogo} alt="Nanoris" className="h-10 w-auto" />
           }
           members={[
-            { id: "01", name: "Ebrahim Tariq", role: "Founder & CEO" },
+            {
+              id: "01",
+              name: "Ebrahim Tariq",
+              role: "Founder & CEO",
+              link: "https://www.linkedin.com/in/ebrahim-tariq-641128380/",
+            },
           ]}
         />
         <section className="px-4 pb-32">
